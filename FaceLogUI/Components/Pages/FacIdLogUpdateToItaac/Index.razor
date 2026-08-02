@@ -1,0 +1,115 @@
+@page "/face-id-log-update-to-itaac"
+@using Domain.AttendanceServiceRespDTO
+@using FaceLogUI.Service
+@inject AccessLogApiClient ApiClient
+@inject NotificationService NotificationService
+
+<PageTitle>Face Attendance Logs</PageTitle>
+
+<RadzenStack Gap=".25rem" class="rz-mb-4">
+    <RadzenText TextStyle="TextStyle.H3" TagName="TagName.H1" class="rz-m-0">Face Attendance Logs</RadzenText>
+    <RadzenText TextStyle="TextStyle.Body1" class="rz-color-secondary rz-m-0">
+        Find HikCentral attendance records by CPR and date range.
+    </RadzenText>
+</RadzenStack>
+
+<RadzenCard Variant="Variant.Outlined" class="rz-mb-4">
+<RadzenTemplateForm TItem="SearchModel" Data="@search" Submit="@SearchAsync">
+    <RadzenStack Gap="1rem">
+        <RadzenRow>
+            <RadzenColumn Size="12" SizeMD="4">
+                <RadzenFormField Text="CPR number" Style="width: 100%">
+                    <RadzenTextBox @bind-Value="search.Cpr" Name="Cpr" Style="width: 100%" />
+                </RadzenFormField>
+                <RadzenRequiredValidator Component="Cpr" Text="CPR number is required." />
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="4">
+                <RadzenFormField Text="From date" Style="width: 100%">
+                    <RadzenDatePicker @bind-Value="search.FromDate" Name="FromDate" DateFormat="dd-MM-yyyy" Style="width: 100%" />
+                </RadzenFormField>
+                <RadzenRequiredValidator Component="FromDate" Text="From date is required." />
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="4">
+                <RadzenFormField Text="To date" Style="width: 100%">
+                    <RadzenDatePicker @bind-Value="search.ToDate" Name="ToDate" DateFormat="dd-MM-yyyy" Style="width: 100%" />
+                </RadzenFormField>
+                <RadzenRequiredValidator Component="ToDate" Text="To date is required." />
+            </RadzenColumn>
+        </RadzenRow>
+        <RadzenButton ButtonType="ButtonType.Submit" Text="Search" Icon="search" Disabled="isLoading" Style="width: 8rem" />
+    </RadzenStack>
+</RadzenTemplateForm>
+</RadzenCard>
+
+<RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Visible="isLoading" class="rz-my-4" />
+
+<RadzenDataGrid TItem="AccessLogDTO" Data="logs" AllowPaging="true" PageSize="10" Density="Density.Compact"
+                AllowSorting="true" EmptyText="No attendance logs found." class="rz-mt-4">
+    <Columns>
+        <RadzenDataGridColumn TItem="AccessLogDTO" Title="Select" Width="80px" Sortable="false" Filterable="false">
+            <Template Context="log">
+                <RadzenCheckBox TValue="bool" Value="@selected.Contains(log)" Change="@(value => SetSelected(log, value))" />
+            </Template>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="AccessLogDTO" Property="EmpId" Title="CPR" />
+        <RadzenDataGridColumn TItem="AccessLogDTO" Property="AccessDateTime" Title="Access date/time" FormatString="{0:dd-MM-yyyy HH:mm:ss}" />
+        <RadzenDataGridColumn TItem="AccessLogDTO" Property="AccessDate" Title="Access date" />
+        <RadzenDataGridColumn TItem="AccessLogDTO" Property="AccessTime" Title="Access time" />
+        <RadzenDataGridColumn TItem="AccessLogDTO" Property="DevName" Title="Device name" />
+        <RadzenDataGridColumn TItem="AccessLogDTO" Property="DevSn" Title="Device serial" />
+        <RadzenDataGridColumn TItem="AccessLogDTO" Property="EmpFirstName" Title="First name" />
+        <RadzenDataGridColumn TItem="AccessLogDTO" Property="EmpLastName" Title="Last name" />
+    </Columns>
+</RadzenDataGrid>
+
+@code {
+    private readonly SearchModel search = new();
+    private IReadOnlyList<AccessLogDTO> logs = [];
+    private readonly HashSet<AccessLogDTO> selected = [];
+    private bool isLoading;
+
+    private async Task SearchAsync()
+    {
+        if (search.FromDate > search.ToDate)
+        {
+            Notify(NotificationSeverity.Warning, "Invalid date range", "From date cannot be after to date.");
+            return;
+        }
+
+        isLoading = true;
+        selected.Clear();
+        try
+        {
+            var response = await ApiClient.GetByCprAsync(search.Cpr, search.FromDate, search.ToDate);
+            logs = response.lstData ?? [];
+            var severity = response.RESPONSE_CODE switch
+            {
+                "001" => NotificationSeverity.Success,
+                "003" => NotificationSeverity.Warning,
+                _ => NotificationSeverity.Error
+            };
+            Notify(severity,
+                severity == NotificationSeverity.Success ? "Success" : "Unable to load logs",
+                response.RESPONSE_DESCRPTION ?? "The attendance service did not return a message.");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void SetSelected(AccessLogDTO log, bool value)
+    {
+        if (value) selected.Add(log); else selected.Remove(log);
+    }
+
+    private void Notify(NotificationSeverity severity, string summary, string detail) =>
+        NotificationService.Notify(severity, summary, detail, 5000);
+
+    private sealed class SearchModel
+    {
+        public string Cpr { get; set; } = string.Empty;
+        public DateTime FromDate { get; set; } = DateTime.Today;
+        public DateTime ToDate { get; set; } = DateTime.Today;
+    }
+}
