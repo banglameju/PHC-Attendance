@@ -4,7 +4,9 @@ using Domain.AttendanceServiceRespDTO;
 using Domain.Core;
 using Domain.CSBOracleModel;
 using Domain.ItaacDTO;
+using Domain.ITAACOracleModel;
 using Npgsql;
+using Oracle.ManagedDataAccess.Client;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.Design;
@@ -24,6 +26,57 @@ namespace DataAccess.Repository
         public void Dispose()
         {
             //throw new NotImplementedException();
+        }
+
+        public async Task<int> SaveEventFaceLogs(List<TbEventFaceLog> eventFaceLogs)
+        {
+            if (eventFaceLogs == null)
+            {
+                throw new ArgumentNullException(nameof(eventFaceLogs));
+            }
+
+            if (eventFaceLogs.Count == 0)
+            {
+                return 0;
+            }
+
+            const string sql = @"INSERT INTO TB_EVENT_FACE_LOG
+                (EVENT_LOG_ID, EMP_ID, ACCESS_DATE_TIME, ACCESS_DATE, ACCESS_TIME,
+                 DEV_SN, DEV_NAME, EMP_FIRST_NAME, EMP_LAST_NAME, IS_PROCESSED)
+                VALUES
+                (:EventLogId, :EmpId, :AccessDateTime, :AccessDate, :AccessTime,
+                 :DevSn, :DevName, :EmpFirstName, :EmpLastName, :IsProcessed)";
+
+            await using var connection = new OracleConnection(ConfigClass.ConnectionStringITAAC);
+            await connection.OpenAsync();
+            await using var transaction = connection.BeginTransaction();
+
+            try
+            {
+                // Serialize ID allocation because TB_EVENT_FACE_LOG does not use an Oracle sequence.
+                await connection.ExecuteAsync(
+                    "LOCK TABLE TB_EVENT_FACE_LOG IN EXCLUSIVE MODE",
+                    transaction: transaction);
+
+                var currentEventLogId = await connection.QuerySingleAsync<decimal>(
+                    "SELECT NVL(MAX(EVENT_LOG_ID), 0) FROM TB_EVENT_FACE_LOG",
+                    transaction: transaction);
+
+                foreach (var eventFaceLog in eventFaceLogs)
+                {
+                    eventFaceLog.EventLogId = ++currentEventLogId;
+                    eventFaceLog.IsProcessed = 0;
+                }
+
+                var rowsInserted = await connection.ExecuteAsync(sql, eventFaceLogs, transaction);
+                await transaction.CommitAsync();
+                return rowsInserted;
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
 
 

@@ -1,6 +1,7 @@
 ﻿using Domain.AttendanceServiceRespDTO;
 using Domain.CSBOracleModel;
 using Domain.ItaacDTO;
+using Domain.ITAACOracleModel;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,6 +21,7 @@ namespace DataAccess.Repository
         Task<List<PatternDTO>> GetPatterDetailsByCode(string PatternCode);
         Task<List<Csb_Health_Leave_Trans>> GetHealthLeaveTransactions(string Cpr, string FromDate, string ToDate);
         Task<List<HealthEmpAttendanceDTO>> GetEmpAtendanceBackupByCpr(string Cpr, string FromDate, string ToDate);
+        Task<int> SaveEventFaceLogs(List<TbEventFaceLog> eventFaceLogs);
 
         //Task<List<AllRequestListDTO>> GetAllRequest();
         //Task<List<AllRequestListDTO>> GetAllRequestByCprAndRequestType(RequestListReqDTO requestListReqDTO);

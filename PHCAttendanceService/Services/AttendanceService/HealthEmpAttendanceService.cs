@@ -4,6 +4,7 @@ using Domain.BiostarModels;
 using Domain.Core;
 using Domain.CSBImportModels;
 using Domain.ItaacDTO;
+using Domain.ITAACOracleModel;
 
 namespace PHCAttendanceService.Services.AttendanceService
 {
@@ -23,6 +24,12 @@ namespace PHCAttendanceService.Services.AttendanceService
         public HealthEmpAttendanceService(IDataRepository repository)
         {
             _repository = repository;
+        }
+
+        public async Task<int> SaveEventFaceLogs(List<TbEventFaceLog> eventFaceLogs)
+        {
+            ArgumentNullException.ThrowIfNull(eventFaceLogs);
+            return await _repository.SaveEventFaceLogs(eventFaceLogs);
         }
 
         public async Task<AttendanceLogRespDTO> GetHikLogByCpr(string CprNumber, string Fromdate, string ToDate)
