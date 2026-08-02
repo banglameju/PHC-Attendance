@@ -18,6 +18,7 @@ builder.Services.AddScoped<IDataRepository, DataRepository>();
 builder.Services.AddScoped<CsbimportContext>();
 builder.Services.AddScoped<CsbHealthEmpDataService>();
 builder.Services.AddScoped<HealthEmpAttendanceService>();
+builder.Services.AddScoped<AccessLogService>();
 builder.Services.AddScoped<PatternService>();
 //builder.Services.AddScoped<CsbLeaveService>();
 

@@ -116,6 +116,34 @@ namespace DataAccess.Repository
             //return getdata;
         }
 
+        public async Task<List<AccessLogDTO>> GetAccessLogsByCpr(string Cpr, DateTime FromDate, DateTime ToDate)
+        {
+            const string sql = @"
+                SELECT
+                    ""EMP_ID"" AS EmpId,
+                    ""ACCESS_DATE_TIME"" AS AccessDateTime,
+                    ""ACCESS_DATE"" AS AccessDate,
+                    ""ACCESS_TIME"" AS AccessTime,
+                    ""DEV_NAME"" AS DevName,
+                    ""DEV_SN"" AS DevSn,
+                    ""EMP_FIRST_NAME"" AS EmpFirstName,
+                    ""EMP_LAST_NAME"" AS EmpLastName
+                FROM public.access_logs
+                WHERE ""EMP_ID"" = @Cpr
+                  AND ""ACCESS_DATE_TIME"" >= @StartDate
+                  AND ""ACCESS_DATE_TIME"" < @EndDateExclusive
+                ORDER BY ""ACCESS_DATE_TIME"" DESC;";
+
+            using IDbConnection connection = new NpgsqlConnection(ConfigClass.HikConnectionString);
+            var results = await connection.QueryAsync<AccessLogDTO>(sql, new
+            {
+                Cpr,
+                StartDate = FromDate.Date,
+                EndDateExclusive = ToDate.Date.AddDays(1)
+            });
+            return results.ToList();
+        }
+
         public async Task<List<AttendanceLogDTO>> GetBackupBioLogByCpr(string Cpr, string FromDate, string ToDate)
         {
             string sql = $@"SELECT CONVERT(date, DATEADD(second, l.nDateTime, '1970-01-01')) AS AttendanceDate,
