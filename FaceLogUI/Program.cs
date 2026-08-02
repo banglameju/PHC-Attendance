@@ -8,6 +8,11 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddRadzenComponents();
+builder.Services.AddHttpClient<FaceLogUI.Service.AccessLogApiClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["AttendanceApi:BaseUrl"]
+        ?? throw new InvalidOperationException("AttendanceApi:BaseUrl is not configured."));
+});
 
 var app = builder.Build();
 
