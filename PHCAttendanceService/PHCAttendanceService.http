@@ -1,0 +1,6 @@
+@PHCAttendanceService_HostAddress = http://localhost:5012
+
+GET {{PHCAttendanceService_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
