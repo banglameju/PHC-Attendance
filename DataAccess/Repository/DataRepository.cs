@@ -12,7 +12,6 @@ using System.Collections.Generic;
 using System.ComponentModel.Design;
 using System.Data;
 using System.Data.SqlClient;
-using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -83,7 +82,7 @@ namespace DataAccess.Repository
 
         public async Task<List<AttendanceLogDTO>> GetHikLogByCpr(string Cpr, string FromDate, string ToDate)
         {
-            var (startOfDay, endDateExclusive) = ParseDateRange(FromDate, ToDate);
+            var (startOfDay, endDateExclusive) = DateRangeParser.Parse(FromDate, ToDate);
 
             using (IDbConnection connection = new NpgsqlConnection(ConfigClass.HikConnectionString))
             {
@@ -116,7 +115,7 @@ namespace DataAccess.Repository
 
         public async Task<List<AccessLogDTO>> GetAccessLogsByCpr(string Cpr, string FromDate, string ToDate)
         {
-            var (startOfDay, endDateExclusive) = ParseDateRange(FromDate, ToDate);
+            var (startOfDay, endDateExclusive) = DateRangeParser.Parse(FromDate, ToDate);
 
             const string sql = @"
                 SELECT
@@ -168,80 +167,6 @@ namespace DataAccess.Repository
             public string? DevSn { get; init; }
             public string? EmpFirstName { get; init; }
             public string? EmpLastName { get; init; }
-        }
-
-        private static (DateTime StartOfDay, DateTime EndDateExclusive) ParseDateRange(
-            string fromDate,
-            string toDate)
-        {
-            if (!DateOnly.TryParseExact(
-                    fromDate?.Trim(),
-                    SupportedDateFormats,
-                    CultureInfo.InvariantCulture,
-                    DateTimeStyles.None,
-                    out var startDate))
-            {
-                throw new ArgumentException(
-                    "From date must use yyyy-MM-dd or dd-MM-yyyy format.",
-                    nameof(fromDate));
-            }
-
-            if (!DateOnly.TryParseExact(
-                    toDate?.Trim(),
-                    SupportedDateFormats,
-                    CultureInfo.InvariantCulture,
-                    DateTimeStyles.None,
-                    out var endDate))
-            {
-                throw new ArgumentException(
-                    "To date must use yyyy-MM-dd or dd-MM-yyyy format.",
-                    nameof(toDate));
-            }
-
-            if (endDate < startDate)
-            {
-                throw new ArgumentException("To date cannot be earlier than from date.", nameof(toDate));
-            }
-
-            return (startDate.ToDateTime(TimeOnly.MinValue),
-                endDate.AddDays(1).ToDateTime(TimeOnly.MinValue));
-        }
-
-        private static (DateTime StartOfDay, DateTime EndDateExclusive) ParseDateRange(
-            string fromDate,
-            string toDate)
-        {
-            if (!DateOnly.TryParseExact(
-                    fromDate?.Trim(),
-                    SupportedDateFormats,
-                    CultureInfo.InvariantCulture,
-                    DateTimeStyles.None,
-                    out var startDate))
-            {
-                throw new ArgumentException(
-                    "From date must use yyyy-MM-dd or dd-MM-yyyy format.",
-                    nameof(fromDate));
-            }
-
-            if (!DateOnly.TryParseExact(
-                    toDate?.Trim(),
-                    SupportedDateFormats,
-                    CultureInfo.InvariantCulture,
-                    DateTimeStyles.None,
-                    out var endDate))
-            {
-                throw new ArgumentException(
-                    "To date must use yyyy-MM-dd or dd-MM-yyyy format.",
-                    nameof(toDate));
-            }
-
-            if (endDate < startDate)
-            {
-                throw new ArgumentException("To date cannot be earlier than from date.", nameof(toDate));
-            }
-
-            return (startDate.ToDateTime(TimeOnly.MinValue),
-                endDate.AddDays(1).ToDateTime(TimeOnly.MinValue));
         }
 
         public async Task<List<AttendanceLogDTO>> GetBackupBioLogByCpr(string Cpr, string FromDate, string ToDate)
