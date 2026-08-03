@@ -113,7 +113,7 @@ namespace DataAccess.Repository
             //return getdata;
         }
 
-        public async Task<List<AccessLogDTO>> GetAccessLogsByCpr(string Cpr, string FromDate, string ToDate)
+        public async Task<List<AccessLogDTO>> GetAccessLogsByCprs(IReadOnlyCollection<string> Cprs, string FromDate, string ToDate)
         {
             var (startOfDay, endDateExclusive) = DateRangeParser.Parse(FromDate, ToDate);
 
@@ -128,15 +128,15 @@ namespace DataAccess.Repository
                     ""EMP_FIRST_NAME"" AS EmpFirstName,
                     ""EMP_LAST_NAME"" AS EmpLastName
                 FROM public.access_logs
-                WHERE ""EMP_ID"" = @Cpr
+                WHERE ""EMP_ID"" = ANY(@Cprs)
                   AND ""ACCESS_DATE_TIME"" >= @StartDate
                   AND ""ACCESS_DATE_TIME"" < @EndDateExclusive
-                ORDER BY ""ACCESS_DATE_TIME"" DESC;";
+                ORDER BY ""EMP_ID"", ""ACCESS_DATE_TIME"";";
 
             using IDbConnection connection = new NpgsqlConnection(ConfigClass.HikConnectionString);
             var results = await connection.QueryAsync<PostgresAccessLogRow>(sql, new
             {
-                Cpr,
+                Cprs = Cprs.ToArray(),
                 StartDate = startOfDay,
                 EndDateExclusive = endDateExclusive
             });
@@ -155,6 +155,31 @@ namespace DataAccess.Repository
                 EmpFirstName = row.EmpFirstName,
                 EmpLastName = row.EmpLastName
             }).ToList();
+        }
+
+        public async Task<List<AsEmployeeMst>> GetEmployeesByCostCenter(string CostCenter)
+        {
+            const string sql = @"SELECT
+                EMPNO EmpNo, CPRNO CprNo, EMP_NAME EmpName, CC_CODE CcCode, CC_UNIT CcUnit,
+                DESIG_CODE DesigCode, ADDRESS1 Address1, ADDRESS2 Address2, ADDRESS3 Address3,
+                PHONE Phone, NATIONALITY Nationality, DOB Dob, SEX Sex, MARITALSTAT MaritalStat,
+                JOIN_DATE JoinDate, PAYTYPE_CODE PayTypeCode, GRADE_CODE GradeCode, STEP_CODE StepCode,
+                EMPLOYEE_TYPE EmployeeType, OVERTIME Overtime, CREATED_BY CreatedBy, CREATED_DATE CreatedDate,
+                MODIFIED_BY ModifiedBy, MODIFIED_DATE ModifiedDate, LAST_ACTION LastAction,
+                SUPERVISORID SupervisorId, ISSUPERVISOR IsSupervisor, ON_CALL OnCall, ON_STANDBY OnStandby,
+                STATUS Status, EMAIL Email, ATTENDANCE_PATTERN AttendancePattern, MEDICAL_COMMITY MedicalCommity,
+                DEDICATION Dedication, ACTIVE Active, RELIGION_CODE ReligionCode, MOH Moh, MAX_HRS MaxHrs,
+                REGISTERED Registered, TERMINATION_DATE TerminationDate, NAT_TYPE NatType, REMARKS Remarks,
+                BANK_CODE BankCode, ACCOUNT_NO AccountNo, EXT_NO ExtNo, BRANCH_CODE BranchCode,
+                BRANCH_NAME BranchName, ORG_CODE OrgCode, ANNUAL_LEAVE_BAL AnnualLeaveBal,
+                SICK_LEAVE_BAL SickLeaveBal, EMP_PER_EMAIL EmpPerEmail
+                FROM AS_EMPLOYEE_MST
+                WHERE CC_CODE = :CostCenter
+                ORDER BY CPRNO";
+
+            await using var connection = new OracleConnection(ConfigClass.ConnectionStringITAAC);
+            var employees = await connection.QueryAsync<AsEmployeeMst>(sql, new { CostCenter });
+            return employees.ToList();
         }
 
         private sealed class PostgresAccessLogRow
