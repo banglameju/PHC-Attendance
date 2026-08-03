@@ -12,7 +12,7 @@ public class EmployeeController : ControllerBase
 
     public EmployeeController(EmployeeService service) => _service = service;
 
-    [HttpGet("by-cost-center")]
-    public Task<CostCenterEmployeeRespDTO> GetByCostCenter([FromQuery] string costCenter) =>
-        _service.GetByCostCenter(costCenter);
+    [HttpGet]
+    public Task<CostCenterEmployeeRespDTO> GetEmployees([FromQuery] EmployeeFilterRequestDTO request) =>
+        _service.GetEmployees(request);
 }

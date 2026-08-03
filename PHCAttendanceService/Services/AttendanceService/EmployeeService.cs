@@ -10,14 +10,16 @@ public class EmployeeService
 
     public EmployeeService(IDataRepository repository) => _repository = repository;
 
-    public async Task<CostCenterEmployeeRespDTO> GetByCostCenter(string costCenter)
+    public async Task<CostCenterEmployeeRespDTO> GetEmployees(EmployeeFilterRequestDTO request)
     {
-        if (string.IsNullOrWhiteSpace(costCenter))
+        var costCenter = Normalize(request.CostCenter);
+        var cpr = Normalize(request.Cpr);
+        if (costCenter is null && cpr is null)
             return Error(ConfigClass.INVALID_REQUEST, ConfigClass.INVALID_REQUEST_MESSAGE);
 
         try
         {
-            var employees = await _repository.GetEmployeesByCostCenter(costCenter.Trim());
+            var employees = await _repository.GetEmployees(costCenter, cpr);
             if (employees.Count == 0)
                 return Error(ConfigClass.DATA_NOT_FOUND, ConfigClass.DATA_NOT_FOUND_MESSAGE);
 
@@ -25,7 +27,8 @@ public class EmployeeService
             {
                 RESPONSE_CODE = ConfigClass.SUCCESS,
                 RESPONSE_DESCRPTION = ConfigClass.SUCCESS_MESSAGE,
-                CostCenter = costCenter.Trim(),
+                CostCenter = costCenter,
+                Cpr = cpr,
                 lstData = employees
             };
         }
@@ -34,6 +37,9 @@ public class EmployeeService
             return Error(ConfigClass.INTERNAL_ERROR, "An error occurred while retrieving employees.");
         }
     }
+
+    private static string? Normalize(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static CostCenterEmployeeRespDTO Error(string code, string description) => new()
     {

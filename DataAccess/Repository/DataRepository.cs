@@ -157,7 +157,7 @@ namespace DataAccess.Repository
             }).ToList();
         }
 
-        public async Task<List<AsEmployeeMst>> GetEmployeesByCostCenter(string CostCenter)
+        public async Task<List<AsEmployeeMst>> GetEmployees(string? CostCenter, string? Cpr)
         {
             const string sql = @"SELECT
                 EMPNO EmpNo, CPRNO CprNo, EMP_NAME EmpName, CC_CODE CcCode, CC_UNIT CcUnit,
@@ -174,11 +174,12 @@ namespace DataAccess.Repository
                 BRANCH_NAME BranchName, ORG_CODE OrgCode, ANNUAL_LEAVE_BAL AnnualLeaveBal,
                 SICK_LEAVE_BAL SickLeaveBal, EMP_PER_EMAIL EmpPerEmail
                 FROM AS_EMPLOYEE_MST
-                WHERE CC_CODE = :CostCenter
+                WHERE (:CostCenter IS NULL OR CC_CODE = :CostCenter)
+                  AND (:Cpr IS NULL OR CPRNO = :Cpr)
                 ORDER BY CPRNO";
 
             await using var connection = new OracleConnection(ConfigClass.ConnectionStringITAAC);
-            var employees = await connection.QueryAsync<AsEmployeeMst>(sql, new { CostCenter });
+            var employees = await connection.QueryAsync<AsEmployeeMst>(sql, new { CostCenter, Cpr });
             return employees.ToList();
         }
 

@@ -18,13 +18,13 @@
     <RadzenStack Gap="1rem">
         <RadzenRow>
             <RadzenColumn Size="12" SizeMD="3">
-                <RadzenFormField Text="CPR number" Style="width: 100%">
-                    <RadzenTextBox @bind-Value="search.Cpr" Name="Cpr" Style="width: 100%" />
+                <RadzenFormField Text="Cost center" Style="width: 100%">
+                    <RadzenTextBox @bind-Value="search.CostCenter" Name="CostCenter" Style="width: 100%" />
                 </RadzenFormField>
             </RadzenColumn>
             <RadzenColumn Size="12" SizeMD="3">
-                <RadzenFormField Text="Cost center" Style="width: 100%">
-                    <RadzenTextBox @bind-Value="search.CostCenter" Name="CostCenter" Style="width: 100%" />
+                <RadzenFormField Text="CPR number" Style="width: 100%">
+                    <RadzenTextBox @bind-Value="search.Cpr" Name="Cpr" Style="width: 100%" />
                 </RadzenFormField>
             </RadzenColumn>
             <RadzenColumn Size="12" SizeMD="3">
@@ -90,27 +90,19 @@
         selected.Clear();
         try
         {
-            List<string> cprs;
-            if (!string.IsNullOrWhiteSpace(search.Cpr))
+            var employeeResponse = await ApiClient.GetEmployeesAsync(search.CostCenter, search.Cpr);
+            var cprs = employeeResponse.lstData?
+                .Select(employee => employee.CprNo)
+                .Where(cpr => !string.IsNullOrWhiteSpace(cpr))
+                .Select(cpr => cpr!)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList() ?? [];
+            if (employeeResponse.RESPONSE_CODE != "001" || cprs.Count == 0)
             {
-                cprs = [search.Cpr.Trim()];
-            }
-            else
-            {
-                var employeeResponse = await ApiClient.GetEmployeesByCostCenterAsync(search.CostCenter.Trim());
-                cprs = employeeResponse.lstData?
-                    .Select(employee => employee.CprNo)
-                    .Where(cpr => !string.IsNullOrWhiteSpace(cpr))
-                    .Select(cpr => cpr!)
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToList() ?? [];
-                if (employeeResponse.RESPONSE_CODE != "001" || cprs.Count == 0)
-                {
-                    logs = [];
-                    Notify(NotificationSeverity.Warning, "Unable to load employees",
-                        employeeResponse.RESPONSE_DESCRPTION ?? "No CPR numbers were found for this cost center.");
-                    return;
-                }
+                logs = [];
+                Notify(NotificationSeverity.Warning, "Unable to load employees",
+                    employeeResponse.RESPONSE_DESCRPTION ?? "No CPR numbers matched the supplied filters.");
+                return;
             }
 
             var response = await ApiClient.GetByCprsAsync(cprs, search.FromDate, search.ToDate);

@@ -14,17 +14,22 @@ public class AccessLogApiClient
         _logger = logger;
     }
 
-    public async Task<CostCenterEmployeeRespDTO> GetEmployeesByCostCenterAsync(string costCenter)
+    public async Task<CostCenterEmployeeRespDTO> GetEmployeesAsync(string? costCenter, string? cpr)
     {
         try
         {
-            var url = $"api/Employee/by-cost-center?costCenter={Uri.EscapeDataString(costCenter)}";
+            var parameters = new List<string>();
+            if (!string.IsNullOrWhiteSpace(costCenter))
+                parameters.Add($"costCenter={Uri.EscapeDataString(costCenter)}");
+            if (!string.IsNullOrWhiteSpace(cpr))
+                parameters.Add($"cpr={Uri.EscapeDataString(cpr)}");
+            var url = $"api/Employee?{string.Join('&', parameters)}";
             return await _httpClient.GetFromJsonAsync<CostCenterEmployeeRespDTO>(url)
                 ?? EmployeeError("Attendance service returned an empty response.");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unable to load employees for cost center {CostCenter}.", costCenter);
+            _logger.LogError(ex, "Unable to load employees for cost center {CostCenter} and CPR {Cpr}.", costCenter, cpr);
             return EmployeeError("Unable to retrieve employees from the attendance service.");
         }
     }
