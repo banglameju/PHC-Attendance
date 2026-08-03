@@ -14,12 +14,37 @@ public class AccessLogApiClient
         _logger = logger;
     }
 
-    public async Task<AccessLogRespDTO> GetByCprAsync(string cpr, DateTime fromDate, DateTime toDate)
+    public async Task<CostCenterEmployeeRespDTO> GetEmployeesAsync(string? costCenter, string? cpr)
     {
         try
         {
-            var url = $"api/AccessLog?cpr={Uri.EscapeDataString(cpr)}&fromDate={fromDate:yyyy-MM-dd}&toDate={toDate:yyyy-MM-dd}";
-            using var response = await _httpClient.GetAsync(url);
+            var parameters = new List<string>();
+            if (!string.IsNullOrWhiteSpace(costCenter))
+                parameters.Add($"costCenter={Uri.EscapeDataString(costCenter)}");
+            if (!string.IsNullOrWhiteSpace(cpr))
+                parameters.Add($"cpr={Uri.EscapeDataString(cpr)}");
+            var url = $"api/Employee?{string.Join('&', parameters)}";
+            return await _httpClient.GetFromJsonAsync<CostCenterEmployeeRespDTO>(url)
+                ?? EmployeeError("Attendance service returned an empty response.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unable to load employees for cost center {CostCenter} and CPR {Cpr}.", costCenter, cpr);
+            return EmployeeError("Unable to retrieve employees from the attendance service.");
+        }
+    }
+
+    public async Task<AccessLogRespDTO> GetByCprsAsync(IEnumerable<string> cprs, DateTime fromDate, DateTime toDate)
+    {
+        try
+        {
+            var request = new AccessLogRequestDTO
+            {
+                Cprs = cprs.ToList(),
+                FromDate = fromDate.ToString("yyyy-MM-dd"),
+                ToDate = toDate.ToString("yyyy-MM-dd")
+            };
+            using var response = await _httpClient.PostAsJsonAsync("api/AccessLog", request);
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning("Attendance API returned HTTP {StatusCode}.", response.StatusCode);
@@ -42,6 +67,12 @@ public class AccessLogApiClient
     }
 
     private static AccessLogRespDTO Error(string message) => new()
+    {
+        RESPONSE_CODE = "011",
+        RESPONSE_DESCRPTION = message
+    };
+
+    private static CostCenterEmployeeRespDTO EmployeeError(string message) => new()
     {
         RESPONSE_CODE = "011",
         RESPONSE_DESCRPTION = message

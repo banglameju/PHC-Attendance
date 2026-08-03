@@ -13,7 +13,8 @@ namespace DataAccess.Repository
     public interface IDataRepository : IDisposable
     {
         Task<List<AttendanceLogDTO>> GetHikLogByCpr(string Cpr, string FromDate, string ToDate);
-        Task<List<AccessLogDTO>> GetAccessLogsByCpr(string Cpr, string FromDate, string ToDate);
+        Task<List<AccessLogDTO>> GetAccessLogsByCprs(IReadOnlyCollection<string> Cprs, string FromDate, string ToDate);
+        Task<List<AsEmployeeMst>> GetEmployees(string? CostCenter, string? Cpr);
         Task<List<AttendanceLogDTO>> GetBackupBioLogByCpr(string Cpr, string FromDate, string ToDate);
         Task<List<AttendanceLogDTO>> GetBioLogByCpr(string Cpr, string FromDate, string ToDate);
         Task<List<HealthEmpAttendanceDTO>> GetEmpAtendanceByCpr(string Cpr, string FromDate, string ToDate);

@@ -13,16 +13,21 @@ public class AccessLogService
         _repository = repository;
     }
 
-    public async Task<AccessLogRespDTO> GetByCpr(string cpr, string fromDate, string toDate)
+    public async Task<AccessLogRespDTO> GetByCprs(AccessLogRequestDTO request)
     {
-        if (string.IsNullOrWhiteSpace(cpr))
+        var cprs = request.Cprs
+            .Where(cpr => !string.IsNullOrWhiteSpace(cpr))
+            .Select(cpr => cpr.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (cprs.Count == 0)
         {
             return Error(ConfigClass.INVALID_REQUEST, ConfigClass.INVALID_REQUEST_MESSAGE);
         }
 
         try
         {
-            var logs = await _repository.GetAccessLogsByCpr(cpr.Trim(), fromDate, toDate);
+            var logs = await _repository.GetAccessLogsByCprs(cprs, request.FromDate, request.ToDate);
             if (logs.Count == 0)
             {
                 return Error(ConfigClass.DATA_NOT_FOUND, ConfigClass.DATA_NOT_FOUND_MESSAGE);
@@ -32,7 +37,7 @@ public class AccessLogService
             {
                 RESPONSE_CODE = ConfigClass.SUCCESS,
                 RESPONSE_DESCRPTION = ConfigClass.SUCCESS_MESSAGE,
-                Cpr = cpr.Trim(),
+                Cprs = cprs,
                 lstData = logs
             };
         }
@@ -46,7 +51,7 @@ public class AccessLogService
     {
         RESPONSE_CODE = code,
         RESPONSE_DESCRPTION = description,
-        Cpr = null,
+        Cprs = null,
         lstData = null
     };
 }
