@@ -105,7 +105,8 @@ public partial class Index
 
     private async Task PushToItaacAsync()
     {
-        var pendingLogs = (selected.Count > 0 ? selected : logs)
+        IEnumerable<AccessLogDTO> logsToPush = selected.Count > 0 ? selected : logs;
+        var pendingLogs = logsToPush
             .Where(log => !log.ItaacUpdated)
             .ToList();
         if (pendingLogs.Count == 0)
