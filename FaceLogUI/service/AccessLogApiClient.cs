@@ -14,12 +14,32 @@ public class AccessLogApiClient
         _logger = logger;
     }
 
-    public async Task<AccessLogRespDTO> GetByCprAsync(string cpr, DateTime fromDate, DateTime toDate)
+    public async Task<CostCenterEmployeeRespDTO> GetEmployeesByCostCenterAsync(string costCenter)
     {
         try
         {
-            var url = $"api/AccessLog?cpr={Uri.EscapeDataString(cpr)}&fromDate={fromDate:yyyy-MM-dd}&toDate={toDate:yyyy-MM-dd}";
-            using var response = await _httpClient.GetAsync(url);
+            var url = $"api/Employee/by-cost-center?costCenter={Uri.EscapeDataString(costCenter)}";
+            return await _httpClient.GetFromJsonAsync<CostCenterEmployeeRespDTO>(url)
+                ?? EmployeeError("Attendance service returned an empty response.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unable to load employees for cost center {CostCenter}.", costCenter);
+            return EmployeeError("Unable to retrieve employees from the attendance service.");
+        }
+    }
+
+    public async Task<AccessLogRespDTO> GetByCprsAsync(IEnumerable<string> cprs, DateTime fromDate, DateTime toDate)
+    {
+        try
+        {
+            var request = new AccessLogRequestDTO
+            {
+                Cprs = cprs.ToList(),
+                FromDate = fromDate.ToString("yyyy-MM-dd"),
+                ToDate = toDate.ToString("yyyy-MM-dd")
+            };
+            using var response = await _httpClient.PostAsJsonAsync("api/AccessLog", request);
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning("Attendance API returned HTTP {StatusCode}.", response.StatusCode);
@@ -42,6 +62,12 @@ public class AccessLogApiClient
     }
 
     private static AccessLogRespDTO Error(string message) => new()
+    {
+        RESPONSE_CODE = "011",
+        RESPONSE_DESCRPTION = message
+    };
+
+    private static CostCenterEmployeeRespDTO EmployeeError(string message) => new()
     {
         RESPONSE_CODE = "011",
         RESPONSE_DESCRPTION = message

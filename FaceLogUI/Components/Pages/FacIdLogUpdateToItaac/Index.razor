@@ -9,7 +9,7 @@
 <RadzenStack Gap=".25rem" class="rz-mb-4">
     <RadzenText TextStyle="TextStyle.H3" TagName="TagName.H1" class="rz-m-0">Face Attendance Logs</RadzenText>
     <RadzenText TextStyle="TextStyle.Body1" class="rz-color-secondary rz-m-0">
-        Find HikCentral attendance records by CPR and date range.
+        Find HikCentral attendance records by CPR or cost center and date range.
     </RadzenText>
 </RadzenStack>
 
@@ -17,19 +17,23 @@
 <RadzenTemplateForm TItem="SearchModel" Data="@search" Submit="@SearchAsync">
     <RadzenStack Gap="1rem">
         <RadzenRow>
-            <RadzenColumn Size="12" SizeMD="4">
+            <RadzenColumn Size="12" SizeMD="3">
                 <RadzenFormField Text="CPR number" Style="width: 100%">
                     <RadzenTextBox @bind-Value="search.Cpr" Name="Cpr" Style="width: 100%" />
                 </RadzenFormField>
-                <RadzenRequiredValidator Component="Cpr" Text="CPR number is required." />
             </RadzenColumn>
-            <RadzenColumn Size="12" SizeMD="4">
+            <RadzenColumn Size="12" SizeMD="3">
+                <RadzenFormField Text="Cost center" Style="width: 100%">
+                    <RadzenTextBox @bind-Value="search.CostCenter" Name="CostCenter" Style="width: 100%" />
+                </RadzenFormField>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="3">
                 <RadzenFormField Text="From date" Style="width: 100%">
                     <RadzenDatePicker @bind-Value="search.FromDate" Name="FromDate" DateFormat="dd-MM-yyyy" Style="width: 100%" />
                 </RadzenFormField>
                 <RadzenRequiredValidator Component="FromDate" Text="From date is required." />
             </RadzenColumn>
-            <RadzenColumn Size="12" SizeMD="4">
+            <RadzenColumn Size="12" SizeMD="3">
                 <RadzenFormField Text="To date" Style="width: 100%">
                     <RadzenDatePicker @bind-Value="search.ToDate" Name="ToDate" DateFormat="dd-MM-yyyy" Style="width: 100%" />
                 </RadzenFormField>
@@ -70,6 +74,12 @@
 
     private async Task SearchAsync()
     {
+        if (string.IsNullOrWhiteSpace(search.Cpr) && string.IsNullOrWhiteSpace(search.CostCenter))
+        {
+            Notify(NotificationSeverity.Warning, "Search criteria required", "Enter either a CPR number or a cost center.");
+            return;
+        }
+
         if (search.FromDate > search.ToDate)
         {
             Notify(NotificationSeverity.Warning, "Invalid date range", "From date cannot be after to date.");
@@ -80,8 +90,34 @@
         selected.Clear();
         try
         {
-            var response = await ApiClient.GetByCprAsync(search.Cpr, search.FromDate, search.ToDate);
-            logs = response.lstData ?? [];
+            List<string> cprs;
+            if (!string.IsNullOrWhiteSpace(search.Cpr))
+            {
+                cprs = [search.Cpr.Trim()];
+            }
+            else
+            {
+                var employeeResponse = await ApiClient.GetEmployeesByCostCenterAsync(search.CostCenter.Trim());
+                cprs = employeeResponse.lstData?
+                    .Select(employee => employee.CprNo)
+                    .Where(cpr => !string.IsNullOrWhiteSpace(cpr))
+                    .Select(cpr => cpr!)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList() ?? [];
+                if (employeeResponse.RESPONSE_CODE != "001" || cprs.Count == 0)
+                {
+                    logs = [];
+                    Notify(NotificationSeverity.Warning, "Unable to load employees",
+                        employeeResponse.RESPONSE_DESCRPTION ?? "No CPR numbers were found for this cost center.");
+                    return;
+                }
+            }
+
+            var response = await ApiClient.GetByCprsAsync(cprs, search.FromDate, search.ToDate);
+            logs = (response.lstData ?? [])
+                .OrderBy(log => log.EmpId)
+                .ThenBy(log => log.AccessDateTime)
+                .ToList();
             var severity = response.RESPONSE_CODE switch
             {
                 "001" => NotificationSeverity.Success,
@@ -109,6 +145,7 @@
     private sealed class SearchModel
     {
         public string Cpr { get; set; } = string.Empty;
+        public string CostCenter { get; set; } = string.Empty;
         public DateTime FromDate { get; set; } = DateTime.Today;
         public DateTime ToDate { get; set; } = DateTime.Today;
     }
