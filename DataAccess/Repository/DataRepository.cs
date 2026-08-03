@@ -12,7 +12,6 @@ using System.Collections.Generic;
 using System.ComponentModel.Design;
 using System.Data;
 using System.Data.SqlClient;
-using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -82,10 +81,7 @@ namespace DataAccess.Repository
 
         public async Task<List<AttendanceLogDTO>> GetHikLogByCpr(string Cpr, string FromDate, string ToDate)
         {
-            DateTime startDate = DateTime.ParseExact(FromDate, "dd-MM-yyyy", CultureInfo.InvariantCulture);
-            DateTime endDate = DateTime.ParseExact(ToDate, "dd-MM-yyyy", CultureInfo.InvariantCulture);
-            DateTime startOfDay = startDate.Date; 
-            DateTime endOfDay = endDate.Date.AddDays(1).AddTicks(-1);
+            var (startOfDay, endDateExclusive) = DateRangeParser.Parse(FromDate, ToDate);
 
             using (IDbConnection connection = new NpgsqlConnection(ConfigClass.HikConnectionString))
             {
@@ -97,14 +93,14 @@ namespace DataAccess.Repository
                                 ""DEV_NAME"" AS DeviceName
                             FROM public.access_logs
                             WHERE ""EMP_ID"" = @Cpr
-                                AND ""ACCESS_DATE_TIME"" >= @startOfDay
-                                AND ""ACCESS_DATE_TIME"" <= @endOfDay
+                                AND ""ACCESS_DATE_TIME"" >= @StartOfDay
+                                AND ""ACCESS_DATE_TIME"" < @EndDateExclusive
                             ORDER BY ""ACCESS_DATE_TIME"" DESC;";
                 var parameters = new
                 {
                     Cpr,
-                    startOfDay,
-                    endOfDay
+                    StartOfDay = startOfDay,
+                    EndDateExclusive = endDateExclusive
                 };
 
                 var results = await connection.QueryAsync<AttendanceLogDTO>(sql, parameters);
@@ -118,17 +114,14 @@ namespace DataAccess.Repository
 
         public async Task<List<AccessLogDTO>> GetAccessLogsByCpr(string Cpr, string FromDate, string ToDate)
         {
-            DateTime startDate = DateTime.ParseExact(FromDate, "dd-MM-yyyy", CultureInfo.InvariantCulture);
-            DateTime endDate = DateTime.ParseExact(ToDate, "dd-MM-yyyy", CultureInfo.InvariantCulture);
-            DateTime startOfDay = startDate.Date;
-            DateTime endOfDay = endDate.Date.AddDays(1).AddTicks(-1);
+            var (startOfDay, endDateExclusive) = DateRangeParser.Parse(FromDate, ToDate);
 
             const string sql = @"
                 SELECT
                     ""EMP_ID"" AS EmpId,
                     ""ACCESS_DATE_TIME"" AS AccessDateTime,
-                    ""ACCESS_DATE"" AS AccessDate,
-                    ""ACCESS_TIME"" AS AccessTime,
+                    ""ACCESS_DATE""::timestamp AS AccessDate,
+                    (""ACCESS_TIME"" - TIME '00:00:00') AS AccessTime,
                     ""DEV_NAME"" AS DevName,
                     ""DEV_SN"" AS DevSn,
                     ""EMP_FIRST_NAME"" AS EmpFirstName,
@@ -140,13 +133,39 @@ namespace DataAccess.Repository
                 ORDER BY ""ACCESS_DATE_TIME"" DESC;";
 
             using IDbConnection connection = new NpgsqlConnection(ConfigClass.HikConnectionString);
-            var results = await connection.QueryAsync<AccessLogDTO>(sql, new
+            var results = await connection.QueryAsync<PostgresAccessLogRow>(sql, new
             {
                 Cpr,
                 StartDate = startOfDay,
-                EndDateExclusive = endOfDay.AddDays(1)
+                EndDateExclusive = endDateExclusive
             });
-            return results.ToList();
+            return results.Select(row => new AccessLogDTO
+            {
+                EmpId = row.EmpId,
+                AccessDateTime = row.AccessDateTime,
+                AccessDate = row.AccessDate.HasValue
+                    ? DateOnly.FromDateTime(row.AccessDate.Value)
+                    : null,
+                AccessTime = row.AccessTime.HasValue
+                    ? TimeOnly.FromTimeSpan(row.AccessTime.Value)
+                    : null,
+                DevName = row.DevName,
+                DevSn = row.DevSn,
+                EmpFirstName = row.EmpFirstName,
+                EmpLastName = row.EmpLastName
+            }).ToList();
+        }
+
+        private sealed class PostgresAccessLogRow
+        {
+            public string? EmpId { get; init; }
+            public DateTime AccessDateTime { get; init; }
+            public DateTime? AccessDate { get; init; }
+            public TimeSpan? AccessTime { get; init; }
+            public string? DevName { get; init; }
+            public string? DevSn { get; init; }
+            public string? EmpFirstName { get; init; }
+            public string? EmpLastName { get; init; }
         }
 
         public async Task<List<AttendanceLogDTO>> GetBackupBioLogByCpr(string Cpr, string FromDate, string ToDate)
