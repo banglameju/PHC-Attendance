@@ -52,7 +52,8 @@
     <Columns>
         <RadzenDataGridColumn TItem="AccessLogDTO" Title="Select" Width="80px" Sortable="false" Filterable="false">
             <Template Context="log">
-                <RadzenCheckBox TValue="bool" Value="@selected.Contains(log)" Change="@(value => SetSelected(log, value))" />
+                <RadzenCheckBox TValue="bool" Value="@selected.Contains(log)" Disabled="@log.ItaacUpdated"
+                                Change="@(value => SetSelected(log, value))" />
             </Template>
         </RadzenDataGridColumn>
         <RadzenDataGridColumn TItem="AccessLogDTO" Property="EmpId" Title="CPR" />
@@ -73,3 +74,13 @@
 @*         <RadzenDataGridColumn TItem="AccessLogDTO" Property="EmpLastName" Title="Last name" /> *@
     </Columns>
 </RadzenDataGrid>
+
+<RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" class="rz-mt-3">
+    <RadzenText TextStyle="TextStyle.Body2" class="rz-color-secondary rz-my-auto">
+        @(selected.Count > 0
+            ? $"{selected.Count} selected record(s) will be pushed."
+            : "No records selected; all not updated records will be pushed.")
+    </RadzenText>
+    <RadzenButton Text="Push to ITAAC" Icon="upload" Click="@PushToItaacAsync"
+                  Disabled="@(isLoading || !logs.Any(log => !log.ItaacUpdated))" />
+</RadzenStack>
