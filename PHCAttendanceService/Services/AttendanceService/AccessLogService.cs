@@ -13,9 +13,9 @@ public class AccessLogService
         _repository = repository;
     }
 
-    public async Task<AccessLogRespDTO> GetByCpr(string cpr, DateTime fromDate, DateTime toDate)
+    public async Task<AccessLogRespDTO> GetByCpr(string cpr, string fromDate, string toDate)
     {
-        if (string.IsNullOrWhiteSpace(cpr) || fromDate == default || toDate == default || fromDate.Date > toDate.Date)
+        if (string.IsNullOrWhiteSpace(cpr))
         {
             return Error(ConfigClass.INVALID_REQUEST, ConfigClass.INVALID_REQUEST_MESSAGE);
         }

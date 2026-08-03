@@ -116,8 +116,13 @@ namespace DataAccess.Repository
             //return getdata;
         }
 
-        public async Task<List<AccessLogDTO>> GetAccessLogsByCpr(string Cpr, DateTime FromDate, DateTime ToDate)
+        public async Task<List<AccessLogDTO>> GetAccessLogsByCpr(string Cpr, string FromDate, string ToDate)
         {
+            DateTime startDate = DateTime.ParseExact(FromDate, "dd-MM-yyyy", CultureInfo.InvariantCulture);
+            DateTime endDate = DateTime.ParseExact(ToDate, "dd-MM-yyyy", CultureInfo.InvariantCulture);
+            DateTime startOfDay = startDate.Date;
+            DateTime endOfDay = endDate.Date.AddDays(1).AddTicks(-1);
+
             const string sql = @"
                 SELECT
                     ""EMP_ID"" AS EmpId,
@@ -138,8 +143,8 @@ namespace DataAccess.Repository
             var results = await connection.QueryAsync<AccessLogDTO>(sql, new
             {
                 Cpr,
-                StartDate = FromDate.Date,
-                EndDateExclusive = ToDate.Date.AddDays(1)
+                StartDate = startOfDay,
+                EndDateExclusive = endOfDay.AddDays(1)
             });
             return results.ToList();
         }

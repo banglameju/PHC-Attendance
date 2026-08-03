@@ -18,6 +18,6 @@ public class AccessLogController : ControllerBase
     [HttpGet]
     public Task<AccessLogRespDTO> GetByCpr(
         [FromQuery] string cpr,
-        [FromQuery] DateTime fromDate,
-        [FromQuery] DateTime toDate) => _service.GetByCpr(cpr, fromDate, toDate);
+        [FromQuery] string fromDate,
+        [FromQuery] string toDate) => _service.GetByCpr(cpr, fromDate, toDate);
 }
