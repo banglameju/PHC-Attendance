@@ -1,6 +1,8 @@
 using DataAccess.Repository;
 using Domain.AttendanceServiceRespDTO;
 using Domain.Core;
+using Domain.ITAACOracleModel;
+using System.Globalization;
 
 namespace PHCAttendanceService.Services.AttendanceService;
 
@@ -46,6 +48,82 @@ public class AccessLogService
             return Error(ConfigClass.INTERNAL_ERROR, "An error occurred while retrieving attendance logs.");
         }
     }
+
+    public async Task<ItaacTimeEventLogResponseDTO> GetItaacStatus(ItaacTimeEventLogRequestDTO request)
+    {
+        if (request?.Logs == null || request.Logs.Count == 0)
+        {
+            return ItaacError(ConfigClass.INVALID_REQUEST,
+                "Supply at least one CPR, log date and log time combination.");
+        }
+
+        var lookups = request.Logs
+            .Select(NormalizeLookup)
+            .ToList();
+        if (lookups.Any(log => log == null))
+        {
+            return ItaacError(ConfigClass.INVALID_REQUEST,
+                "CPR is required and dates/times must use yyyy-MM-dd and HH:mm:ss formats.");
+        }
+
+        var validLookups = lookups.Cast<ItaacTimeEventLogLookupDTO>()
+            .DistinctBy(LookupKey)
+            .ToList();
+        try
+        {
+            var matches = await _repository.GetItaacTimeEventLogs(validLookups);
+            var matchedKeys = matches
+                .Select(log => $"{log.EmpId.Trim()}|{log.LogDateTime:yyyy-MM-dd HH:mm:ss}")
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            return new ItaacTimeEventLogResponseDTO
+            {
+                RESPONSE_CODE = ConfigClass.SUCCESS,
+                RESPONSE_DESCRPTION = ConfigClass.SUCCESS_MESSAGE,
+                lstData = validLookups.Select(log => new ItaacTimeEventLogResultDTO
+                {
+                    Cpr = log.Cpr,
+                    LogDate = log.LogDate,
+                    LogTime = log.LogTime,
+                    IsAvailable = matchedKeys.Contains(LookupKey(log))
+                }).ToList()
+            };
+        }
+        catch (Exception)
+        {
+            return ItaacError(ConfigClass.INTERNAL_ERROR,
+                "An error occurred while checking ITAAC attendance logs.");
+        }
+    }
+
+    private static ItaacTimeEventLogLookupDTO? NormalizeLookup(ItaacTimeEventLogLookupDTO log)
+    {
+        if (log == null || string.IsNullOrWhiteSpace(log.Cpr)
+            || !DateOnly.TryParseExact(log.LogDate, "yyyy-MM-dd", CultureInfo.InvariantCulture,
+                DateTimeStyles.None, out var date)
+            || !TimeOnly.TryParseExact(log.LogTime, "HH:mm:ss", CultureInfo.InvariantCulture,
+                DateTimeStyles.None, out var time))
+        {
+            return null;
+        }
+
+        return new ItaacTimeEventLogLookupDTO
+        {
+            Cpr = log.Cpr.Trim(),
+            LogDate = date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            LogTime = time.ToString("HH:mm:ss", CultureInfo.InvariantCulture)
+        };
+    }
+
+    private static string LookupKey(ItaacTimeEventLogLookupDTO log) =>
+        $"{log.Cpr}|{log.LogDate} {log.LogTime}";
+
+    private static ItaacTimeEventLogResponseDTO ItaacError(string code, string description) => new()
+    {
+        RESPONSE_CODE = code,
+        RESPONSE_DESCRPTION = description,
+        lstData = null
+    };
 
     private static AccessLogRespDTO Error(string code, string description) => new()
     {

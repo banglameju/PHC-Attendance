@@ -56,6 +56,29 @@ public partial class Index
                 .OrderBy(log => log.EmpId)
                 .ThenBy(log => log.AccessDateTime)
                 .ToList();
+            if (logs.Count > 0)
+            {
+                var itaacResponse = await ApiClient.GetItaacStatusAsync(logs);
+                if (itaacResponse.RESPONSE_CODE == "001")
+                {
+                    var updatedKeys = (itaacResponse.lstData ?? [])
+                        .Where(item => item.IsAvailable)
+                        .Select(item => $"{item.Cpr}|{item.LogDate} {item.LogTime}")
+                        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                    foreach (var log in logs)
+                    {
+                        var date = log.AccessDate ?? DateOnly.FromDateTime(log.AccessDateTime);
+                        var time = log.AccessTime ?? TimeOnly.FromDateTime(log.AccessDateTime);
+                        log.ItaacUpdated = updatedKeys.Contains(
+                            $"{log.EmpId}|{date:yyyy-MM-dd} {time:HH:mm:ss}");
+                    }
+                }
+                else
+                {
+                    Notify(NotificationSeverity.Error, "Unable to check ITAAC status",
+                        itaacResponse.RESPONSE_DESCRPTION ?? "The ITAAC status service did not return a message.");
+                }
+            }
             var severity = response.RESPONSE_CODE switch
             {
                 "001" => NotificationSeverity.Success,

@@ -1,5 +1,6 @@
 using Domain.AttendanceServiceRespDTO;
 using System.Net.Http.Json;
+using Domain.ITAACOracleModel;
 
 namespace FaceLogUI.Service;
 
@@ -66,6 +67,36 @@ public class AccessLogApiClient
         }
     }
 
+    public async Task<ItaacTimeEventLogResponseDTO> GetItaacStatusAsync(IEnumerable<AccessLogDTO> logs)
+    {
+        try
+        {
+            var request = new ItaacTimeEventLogRequestDTO
+            {
+                Logs = logs.Where(log => !string.IsNullOrWhiteSpace(log.EmpId))
+                    .Select(log => new ItaacTimeEventLogLookupDTO
+                    {
+                        Cpr = log.EmpId!,
+                        LogDate = (log.AccessDate ?? DateOnly.FromDateTime(log.AccessDateTime)).ToString("yyyy-MM-dd"),
+                        LogTime = (log.AccessTime ?? TimeOnly.FromDateTime(log.AccessDateTime)).ToString("HH:mm:ss")
+                    }).ToList()
+            };
+            using var response = await _httpClient.PostAsJsonAsync("api/AccessLog/itaac-status", request);
+            if (!response.IsSuccessStatusCode)
+            {
+                return ItaacError($"Attendance service returned {response.StatusCode}.");
+            }
+
+            return await response.Content.ReadFromJsonAsync<ItaacTimeEventLogResponseDTO>()
+                ?? ItaacError("Attendance service returned an empty response.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unable to check ITAAC attendance status.");
+            return ItaacError("Unable to check ITAAC attendance status.");
+        }
+    }
+
     private static AccessLogRespDTO Error(string message) => new()
     {
         RESPONSE_CODE = "011",
@@ -73,6 +104,12 @@ public class AccessLogApiClient
     };
 
     private static CostCenterEmployeeRespDTO EmployeeError(string message) => new()
+    {
+        RESPONSE_CODE = "011",
+        RESPONSE_DESCRPTION = message
+    };
+
+    private static ItaacTimeEventLogResponseDTO ItaacError(string message) => new()
     {
         RESPONSE_CODE = "011",
         RESPONSE_DESCRPTION = message

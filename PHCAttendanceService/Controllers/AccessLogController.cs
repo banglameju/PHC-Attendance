@@ -1,6 +1,7 @@
 using Domain.AttendanceServiceRespDTO;
 using Microsoft.AspNetCore.Mvc;
 using PHCAttendanceService.Services.AttendanceService;
+using Domain.ITAACOracleModel;
 
 namespace PHCAttendanceService.Controllers;
 
@@ -18,4 +19,9 @@ public class AccessLogController : ControllerBase
     [HttpPost]
     public Task<AccessLogRespDTO> GetByCprs([FromBody] AccessLogRequestDTO request) =>
         _service.GetByCprs(request);
+
+    [HttpPost("itaac-status")]
+    public Task<ItaacTimeEventLogResponseDTO> GetItaacStatus(
+        [FromBody] ItaacTimeEventLogRequestDTO request) =>
+        _service.GetItaacStatus(request);
 }

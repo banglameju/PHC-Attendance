@@ -13,4 +13,5 @@ public class AccessLogDTO
     public string? DevSn { get; set; }
     public string? EmpFirstName { get; set; }
     public string? EmpLastName { get; set; }
+    public bool ItaacUpdated { get; set; }
 }

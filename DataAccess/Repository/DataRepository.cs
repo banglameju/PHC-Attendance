@@ -79,6 +79,50 @@ namespace DataAccess.Repository
             }
         }
 
+        public async Task<List<AsTimeEventLog>> GetItaacTimeEventLogs(
+            IReadOnlyCollection<ItaacTimeEventLogLookupDTO> logs)
+        {
+            if (logs.Count == 0)
+            {
+                return [];
+            }
+
+            var matches = new List<AsTimeEventLog>();
+            await using var connection = new OracleConnection(ConfigClass.ConnectionStringITAAC);
+            await connection.OpenAsync();
+
+            foreach (var batch in logs.Chunk(500))
+            {
+                var parameters = new DynamicParameters();
+                var requestedRows = batch.Select((log, index) =>
+                {
+                    parameters.Add($"Cpr{index}", log.Cpr, DbType.String);
+                    parameters.Add($"LogDateTime{index}",
+                        DateTime.ParseExact($"{log.LogDate} {log.LogTime}", "yyyy-MM-dd HH:mm:ss",
+                            System.Globalization.CultureInfo.InvariantCulture), DbType.DateTime);
+                    return $"SELECT :Cpr{index} EMP_ID, :LogDateTime{index} LOG_DATETIME FROM DUAL";
+                });
+
+                var sql = $@"
+                SELECT t.EMP_ID EmpId, t.LOG_DATETIME LogDateTime, t.LOG_DATE LogDate,
+                       t.LOG_TIME LogTime, t.LOGIN_ID LoginId, t.READER_ID ReaderId,
+                       t.EVENT_ID EventId, t.STATUS Status, t.COMMENTS Comments,
+                       t.USER_ID UserId, t.MODIFY_DATE ModifyDate, t.JUSTIFY Justify,
+                       t.CC_CODE CcCode, t.CC_UNIT CcUnit, t.LOADING_TIME LoadingTime,
+                       t.CREATED_BY CreatedBy, t.CREATED_DATE CreatedDate,
+                       t.MODIFIED_BY ModifiedBy, t.MODIFIED_DATE ModifiedDate,
+                       t.LOG_STATUS LogStatus, t.ATT_STATUS AttStatus, t.LOG_TYPE LogType
+                FROM AS_TIME_EVENT_LOG t
+                INNER JOIN ({string.Join(" UNION ALL ", requestedRows)}) requested
+                    ON requested.EMP_ID = t.EMP_ID
+                   AND requested.LOG_DATETIME = t.LOG_DATETIME";
+
+                matches.AddRange(await connection.QueryAsync<AsTimeEventLog>(sql, parameters));
+            }
+
+            return matches;
+        }
+
 
         public async Task<List<AttendanceLogDTO>> GetHikLogByCpr(string Cpr, string FromDate, string ToDate)
         {
