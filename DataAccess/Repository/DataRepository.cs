@@ -20,6 +20,7 @@ namespace DataAccess.Repository
 {
     public class DataRepository : IDataRepository
     {
+        private static readonly string[] SupportedDateFormats = ["yyyy-MM-dd", "dd-MM-yyyy"];
         private SqlDataAccess db = new SqlDataAccess();
 
         public void Dispose()
