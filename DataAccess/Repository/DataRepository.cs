@@ -28,7 +28,7 @@ namespace DataAccess.Repository
             //throw new NotImplementedException();
         }
 
-        public async Task<int> SaveEventFaceLogs(List<TbEventFaceLog> eventFaceLogs)
+        public async Task<EventFaceLogProcessResult> SaveAndProcessEventFaceLogs(List<TbEventFaceLog> eventFaceLogs)
         {
             if (eventFaceLogs == null)
             {
@@ -37,7 +37,7 @@ namespace DataAccess.Repository
 
             if (eventFaceLogs.Count == 0)
             {
-                return 0;
+                throw new ArgumentException("At least one event face log is required.", nameof(eventFaceLogs));
             }
 
             const string sql = @"INSERT INTO TB_EVENT_FACE_LOG
@@ -68,9 +68,29 @@ namespace DataAccess.Repository
                     eventFaceLog.IsProcessed = 0;
                 }
 
+                var fromEventLogId = eventFaceLogs[0].EventLogId;
+                var toEventLogId = eventFaceLogs[^1].EventLogId;
                 var rowsInserted = await connection.ExecuteAsync(sql, eventFaceLogs, transaction);
+
+                // P_COMMIT is deliberately disabled so inserts and processing remain one atomic operation.
+                var procedureParameters = new DynamicParameters();
+                procedureParameters.Add("P_FROM_ID", fromEventLogId, DbType.Decimal, ParameterDirection.Input);
+                procedureParameters.Add("P_TO_ID", toEventLogId, DbType.Decimal, ParameterDirection.Input);
+                procedureParameters.Add("P_COMMIT", 0, DbType.Int32, ParameterDirection.Input);
+                await connection.ExecuteAsync(
+                    "pr_process_face_event_log",
+                    procedureParameters,
+                    transaction,
+                    commandType: CommandType.StoredProcedure);
+
                 await transaction.CommitAsync();
-                return rowsInserted;
+                return new EventFaceLogProcessResult
+                {
+                    RowsInserted = rowsInserted,
+                    FromEventLogId = fromEventLogId,
+                    ToEventLogId = toEventLogId,
+                    Message = $"Successfully pushed and processed {rowsInserted} attendance log(s)."
+                };
             }
             catch
             {
