@@ -21,6 +21,7 @@ namespace DataAccess.Repository
 {
     public class DataRepository : IDataRepository
     {
+        private static readonly string[] SupportedDateFormats = ["yyyy-MM-dd", "dd-MM-yyyy"];
         private SqlDataAccess db = new SqlDataAccess();
 
         public void Dispose()
@@ -82,10 +83,7 @@ namespace DataAccess.Repository
 
         public async Task<List<AttendanceLogDTO>> GetHikLogByCpr(string Cpr, string FromDate, string ToDate)
         {
-            DateTime startDate = DateTime.ParseExact(FromDate, "dd-MM-yyyy", CultureInfo.InvariantCulture);
-            DateTime endDate = DateTime.ParseExact(ToDate, "dd-MM-yyyy", CultureInfo.InvariantCulture);
-            DateTime startOfDay = startDate.Date; 
-            DateTime endOfDay = endDate.Date.AddDays(1).AddTicks(-1);
+            var (startOfDay, endDateExclusive) = ParseDateRange(FromDate, ToDate);
 
             using (IDbConnection connection = new NpgsqlConnection(ConfigClass.HikConnectionString))
             {
@@ -97,14 +95,14 @@ namespace DataAccess.Repository
                                 ""DEV_NAME"" AS DeviceName
                             FROM public.access_logs
                             WHERE ""EMP_ID"" = @Cpr
-                                AND ""ACCESS_DATE_TIME"" >= @startOfDay
-                                AND ""ACCESS_DATE_TIME"" <= @endOfDay
+                                AND ""ACCESS_DATE_TIME"" >= @StartOfDay
+                                AND ""ACCESS_DATE_TIME"" < @EndDateExclusive
                             ORDER BY ""ACCESS_DATE_TIME"" DESC;";
                 var parameters = new
                 {
                     Cpr,
-                    startOfDay,
-                    endOfDay
+                    StartOfDay = startOfDay,
+                    EndDateExclusive = endDateExclusive
                 };
 
                 var results = await connection.QueryAsync<AttendanceLogDTO>(sql, parameters);
@@ -118,10 +116,7 @@ namespace DataAccess.Repository
 
         public async Task<List<AccessLogDTO>> GetAccessLogsByCpr(string Cpr, string FromDate, string ToDate)
         {
-            DateTime startDate = DateTime.ParseExact(FromDate, "dd-MM-yyyy", CultureInfo.InvariantCulture);
-            DateTime endDate = DateTime.ParseExact(ToDate, "dd-MM-yyyy", CultureInfo.InvariantCulture);
-            DateTime startOfDay = startDate.Date;
-            DateTime endOfDay = endDate.Date.AddDays(1).AddTicks(-1);
+            var (startOfDay, endDateExclusive) = ParseDateRange(FromDate, ToDate);
 
             const string sql = @"
                 SELECT
@@ -144,9 +139,46 @@ namespace DataAccess.Repository
             {
                 Cpr,
                 StartDate = startOfDay,
-                EndDateExclusive = endOfDay.AddDays(1)
+                EndDateExclusive = endDateExclusive
             });
             return results.ToList();
+        }
+
+        private static (DateTime StartOfDay, DateTime EndDateExclusive) ParseDateRange(
+            string fromDate,
+            string toDate)
+        {
+            if (!DateOnly.TryParseExact(
+                    fromDate?.Trim(),
+                    SupportedDateFormats,
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.None,
+                    out var startDate))
+            {
+                throw new ArgumentException(
+                    "From date must use yyyy-MM-dd or dd-MM-yyyy format.",
+                    nameof(fromDate));
+            }
+
+            if (!DateOnly.TryParseExact(
+                    toDate?.Trim(),
+                    SupportedDateFormats,
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.None,
+                    out var endDate))
+            {
+                throw new ArgumentException(
+                    "To date must use yyyy-MM-dd or dd-MM-yyyy format.",
+                    nameof(toDate));
+            }
+
+            if (endDate < startDate)
+            {
+                throw new ArgumentException("To date cannot be earlier than from date.", nameof(toDate));
+            }
+
+            return (startDate.ToDateTime(TimeOnly.MinValue),
+                endDate.AddDays(1).ToDateTime(TimeOnly.MinValue));
         }
 
         public async Task<List<AttendanceLogDTO>> GetBackupBioLogByCpr(string Cpr, string FromDate, string ToDate)
