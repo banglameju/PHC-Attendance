@@ -26,10 +26,10 @@ namespace PHCAttendanceService.Services.AttendanceService
             _repository = repository;
         }
 
-        public async Task<int> SaveEventFaceLogs(List<TbEventFaceLog> eventFaceLogs)
+        public async Task<EventFaceLogProcessResult> SaveAndProcessEventFaceLogs(List<TbEventFaceLog> eventFaceLogs)
         {
             ArgumentNullException.ThrowIfNull(eventFaceLogs);
-            return await _repository.SaveEventFaceLogs(eventFaceLogs);
+            return await _repository.SaveAndProcessEventFaceLogs(eventFaceLogs);
         }
 
         public async Task<AttendanceLogRespDTO> GetHikLogByCpr(string CprNumber, string Fromdate, string ToDate)

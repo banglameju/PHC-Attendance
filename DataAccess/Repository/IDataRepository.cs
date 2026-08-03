@@ -23,7 +23,7 @@ namespace DataAccess.Repository
         Task<List<PatternDTO>> GetPatterDetailsByCode(string PatternCode);
         Task<List<Csb_Health_Leave_Trans>> GetHealthLeaveTransactions(string Cpr, string FromDate, string ToDate);
         Task<List<HealthEmpAttendanceDTO>> GetEmpAtendanceBackupByCpr(string Cpr, string FromDate, string ToDate);
-        Task<int> SaveEventFaceLogs(List<TbEventFaceLog> eventFaceLogs);
+        Task<EventFaceLogProcessResult> SaveAndProcessEventFaceLogs(List<TbEventFaceLog> eventFaceLogs);
         Task<List<AsTimeEventLog>> GetItaacTimeEventLogs(IReadOnlyCollection<ItaacTimeEventLogLookupDTO> logs);
 
         //Task<List<AllRequestListDTO>> GetAllRequest();

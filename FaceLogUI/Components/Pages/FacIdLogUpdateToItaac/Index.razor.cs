@@ -97,10 +97,47 @@ public partial class Index
 
     private void SetSelected(AccessLogDTO log, bool value)
     {
-        if (value)
+        if (value && !log.ItaacUpdated)
             selected.Add(log);
         else
             selected.Remove(log);
+    }
+
+    private async Task PushToItaacAsync()
+    {
+        var pendingLogs = (selected.Count > 0 ? selected : logs)
+            .Where(log => !log.ItaacUpdated)
+            .ToList();
+        if (pendingLogs.Count == 0)
+        {
+            Notify(NotificationSeverity.Info, "Nothing to push", "All displayed attendance logs are already updated in ITAAC.");
+            return;
+        }
+
+        var invalidCprs = pendingLogs.Where(log => !decimal.TryParse(log.EmpId,
+            System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out _)).ToList();
+        if (invalidCprs.Count > 0)
+        {
+            Notify(NotificationSeverity.Error, "Unable to push logs",
+                $"{invalidCprs.Count} attendance log(s) have a missing or invalid CPR number.");
+            return;
+        }
+
+        isLoading = true;
+        try
+        {
+            var result = await ApiClient.PushToItaacAsync(pendingLogs);
+            Notify(NotificationSeverity.Success, "ITAAC update completed", result.Message);
+            await SearchAsync();
+        }
+        catch (Exception ex)
+        {
+            Notify(NotificationSeverity.Error, "ITAAC update failed", ex.Message);
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 
     private void Notify(NotificationSeverity severity, string summary, string detail) =>

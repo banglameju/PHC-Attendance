@@ -97,6 +97,39 @@ public class AccessLogApiClient
         }
     }
 
+    public async Task<EventFaceLogProcessResult> PushToItaacAsync(IEnumerable<AccessLogDTO> logs)
+    {
+        try
+        {
+            var eventLogs = logs.Select(log => new TbEventFaceLog
+            {
+                EmpId = decimal.Parse(log.EmpId!, System.Globalization.CultureInfo.InvariantCulture),
+                AccessDateTime = log.AccessDateTime.ToString("yyyy-MM-dd HH:mm:ss"),
+                AccessDate = (log.AccessDate ?? DateOnly.FromDateTime(log.AccessDateTime)).ToString("yyyy-MM-dd"),
+                AccessTime = (log.AccessTime ?? TimeOnly.FromDateTime(log.AccessDateTime)).ToString("HH:mm:ss"),
+                DevSn = log.DevSn ?? string.Empty,
+                DevName = log.DevName ?? string.Empty,
+                EmpFirstName = log.EmpFirstName ?? string.Empty,
+                EmpLastName = log.EmpLastName
+            }).ToList();
+
+            using var response = await _httpClient.PostAsJsonAsync("api/ITAACEventFaceLog", eventLogs);
+            if (!response.IsSuccessStatusCode)
+            {
+                var problem = await response.Content.ReadFromJsonAsync<Microsoft.AspNetCore.Mvc.ProblemDetails>();
+                throw new HttpRequestException(problem?.Detail ?? $"ITAAC service returned {response.StatusCode}.");
+            }
+
+            return await response.Content.ReadFromJsonAsync<EventFaceLogProcessResult>()
+                ?? throw new InvalidOperationException("ITAAC service returned an empty response.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unable to push face attendance logs to ITAAC.");
+            throw;
+        }
+    }
+
     private static AccessLogRespDTO Error(string message) => new()
     {
         RESPONSE_CODE = "011",
