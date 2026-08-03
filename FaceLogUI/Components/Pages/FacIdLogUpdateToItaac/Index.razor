@@ -1,15 +1,12 @@
 @page "/face-id-log-update-to-itaac"
 @using Domain.AttendanceServiceRespDTO
-@using FaceLogUI.Service
-@inject AccessLogApiClient ApiClient
-@inject NotificationService NotificationService
 
 <PageTitle>Face Attendance Logs</PageTitle>
 
 <RadzenStack Gap=".25rem" class="rz-mb-4">
     <RadzenText TextStyle="TextStyle.H3" TagName="TagName.H1" class="rz-m-0">Face Attendance Logs</RadzenText>
     <RadzenText TextStyle="TextStyle.Body1" class="rz-color-secondary rz-m-0">
-        Find HikCentral attendance records by CPR and date range.
+        Find HikCentral attendance records by CPR or cost center and date range.
     </RadzenText>
 </RadzenStack>
 
@@ -17,19 +14,23 @@
 <RadzenTemplateForm TItem="SearchModel" Data="@search" Submit="@SearchAsync">
     <RadzenStack Gap="1rem">
         <RadzenRow>
-            <RadzenColumn Size="12" SizeMD="4">
+            <RadzenColumn Size="12" SizeMD="3">
+                <RadzenFormField Text="Cost center" Style="width: 100%">
+                    <RadzenTextBox @bind-Value="search.CostCenter" Name="CostCenter" Style="width: 100%" />
+                </RadzenFormField>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="3">
                 <RadzenFormField Text="CPR number" Style="width: 100%">
                     <RadzenTextBox @bind-Value="search.Cpr" Name="Cpr" Style="width: 100%" />
                 </RadzenFormField>
-                <RadzenRequiredValidator Component="Cpr" Text="CPR number is required." />
             </RadzenColumn>
-            <RadzenColumn Size="12" SizeMD="4">
+            <RadzenColumn Size="12" SizeMD="3">
                 <RadzenFormField Text="From date" Style="width: 100%">
                     <RadzenDatePicker @bind-Value="search.FromDate" Name="FromDate" DateFormat="dd-MM-yyyy" Style="width: 100%" />
                 </RadzenFormField>
                 <RadzenRequiredValidator Component="FromDate" Text="From date is required." />
             </RadzenColumn>
-            <RadzenColumn Size="12" SizeMD="4">
+            <RadzenColumn Size="12" SizeMD="3">
                 <RadzenFormField Text="To date" Style="width: 100%">
                     <RadzenDatePicker @bind-Value="search.ToDate" Name="ToDate" DateFormat="dd-MM-yyyy" Style="width: 100%" />
                 </RadzenFormField>
@@ -61,55 +62,3 @@
         <RadzenDataGridColumn TItem="AccessLogDTO" Property="EmpLastName" Title="Last name" />
     </Columns>
 </RadzenDataGrid>
-
-@code {
-    private readonly SearchModel search = new();
-    private IReadOnlyList<AccessLogDTO> logs = [];
-    private readonly HashSet<AccessLogDTO> selected = [];
-    private bool isLoading;
-
-    private async Task SearchAsync()
-    {
-        if (search.FromDate > search.ToDate)
-        {
-            Notify(NotificationSeverity.Warning, "Invalid date range", "From date cannot be after to date.");
-            return;
-        }
-
-        isLoading = true;
-        selected.Clear();
-        try
-        {
-            var response = await ApiClient.GetByCprAsync(search.Cpr, search.FromDate, search.ToDate);
-            logs = response.lstData ?? [];
-            var severity = response.RESPONSE_CODE switch
-            {
-                "001" => NotificationSeverity.Success,
-                "003" => NotificationSeverity.Warning,
-                _ => NotificationSeverity.Error
-            };
-            Notify(severity,
-                severity == NotificationSeverity.Success ? "Success" : "Unable to load logs",
-                response.RESPONSE_DESCRPTION ?? "The attendance service did not return a message.");
-        }
-        finally
-        {
-            isLoading = false;
-        }
-    }
-
-    private void SetSelected(AccessLogDTO log, bool value)
-    {
-        if (value) selected.Add(log); else selected.Remove(log);
-    }
-
-    private void Notify(NotificationSeverity severity, string summary, string detail) =>
-        NotificationService.Notify(severity, summary, detail, 5000);
-
-    private sealed class SearchModel
-    {
-        public string Cpr { get; set; } = string.Empty;
-        public DateTime FromDate { get; set; } = DateTime.Today;
-        public DateTime ToDate { get; set; } = DateTime.Today;
-    }
-}

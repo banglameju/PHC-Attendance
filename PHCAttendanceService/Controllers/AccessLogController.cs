@@ -15,9 +15,7 @@ public class AccessLogController : ControllerBase
         _service = service;
     }
 
-    [HttpGet]
-    public Task<AccessLogRespDTO> GetByCpr(
-        [FromQuery] string cpr,
-        [FromQuery] string fromDate,
-        [FromQuery] string toDate) => _service.GetByCpr(cpr, fromDate, toDate);
+    [HttpPost]
+    public Task<AccessLogRespDTO> GetByCprs([FromBody] AccessLogRequestDTO request) =>
+        _service.GetByCprs(request);
 }
