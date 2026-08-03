@@ -59,6 +59,12 @@
         <RadzenDataGridColumn TItem="AccessLogDTO" Property="AccessDateTime" Title="Access date/time" FormatString="{0:dd-MM-yyyy HH:mm:ss}" />
         <RadzenDataGridColumn TItem="AccessLogDTO" Property="AccessDate" Title="Access date" />
         <RadzenDataGridColumn TItem="AccessLogDTO" Property="AccessTime" Title="Access time" />
+        <RadzenDataGridColumn TItem="AccessLogDTO" Title="ITAAC flag" Sortable="false">
+            <Template Context="log">
+                <RadzenBadge Text="@(log.ItaacUpdated ? "Updated" : "Not updated")"
+                             BadgeStyle="@(log.ItaacUpdated ? BadgeStyle.Success : BadgeStyle.Danger)" />
+            </Template>
+        </RadzenDataGridColumn>
         <RadzenDataGridColumn TItem="AccessLogDTO" Property="DevName" Title="Device name" />
         <RadzenDataGridColumn TItem="AccessLogDTO" Property="DevSn" Title="Device serial" />
         <RadzenDataGridColumn TItem="AccessLogDTO" Property="EmpFirstName" Title="First name" />

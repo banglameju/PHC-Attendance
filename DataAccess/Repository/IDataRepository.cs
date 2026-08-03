@@ -24,6 +24,7 @@ namespace DataAccess.Repository
         Task<List<Csb_Health_Leave_Trans>> GetHealthLeaveTransactions(string Cpr, string FromDate, string ToDate);
         Task<List<HealthEmpAttendanceDTO>> GetEmpAtendanceBackupByCpr(string Cpr, string FromDate, string ToDate);
         Task<int> SaveEventFaceLogs(List<TbEventFaceLog> eventFaceLogs);
+        Task<List<AsTimeEventLog>> GetItaacTimeEventLogs(IReadOnlyCollection<ItaacTimeEventLogLookupDTO> logs);
 
         //Task<List<AllRequestListDTO>> GetAllRequest();
         //Task<List<AllRequestListDTO>> GetAllRequestByCprAndRequestType(RequestListReqDTO requestListReqDTO);
