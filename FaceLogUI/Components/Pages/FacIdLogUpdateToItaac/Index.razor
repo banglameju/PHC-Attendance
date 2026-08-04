@@ -5,9 +5,9 @@
 <PageTitle>Face Attendance Logs</PageTitle>
 
 <RadzenStack Gap=".25rem" class="rz-mb-4">
-    <RadzenText TextStyle="TextStyle.H3" TagName="TagName.H1" class="rz-m-0">Face Attendance Logs</RadzenText>
+    <RadzenText TextStyle="TextStyle.H3" TagName="TagName.H1" class="rz-m-0">Attendance Logs</RadzenText>
     <RadzenText TextStyle="TextStyle.Body1" class="rz-color-secondary rz-m-0">
-        Find HikCentral attendance records by CPR or cost center and date range.
+        Find attendance records by CPR or cost center and date range.
     </RadzenText>
 </RadzenStack>
 
@@ -47,7 +47,7 @@
 
 <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Visible="isLoading" class="rz-my-4" />
 
-<RadzenText TextStyle="TextStyle.H4" TagName="TagName.H2" class="rz-mt-4">Face ID logs</RadzenText>
+<RadzenText TextStyle="TextStyle.H5" TagName="TagName.H2" class="rz-mt-4">Face ID logs</RadzenText>
 <RadzenDataGrid TItem="AccessLogDTO" Data="logs" AllowPaging="true" PageSize="10" Density="Density.Compact"
                 AllowSorting="true" EmptyText="No attendance logs found." class="rz-mt-4">
     <Columns>
@@ -86,7 +86,7 @@
                   Disabled="@(isLoading || !logs.Any(log => !log.ItaacUpdated))" />
 </RadzenStack>
 
-<RadzenText TextStyle="TextStyle.H4" TagName="TagName.H2" class="rz-mt-5">Biostar logs</RadzenText>
+@* <RadzenText TextStyle="TextStyle.H5" TagName="TagName.H2" class="rz-mt-5">Biostar logs</RadzenText>
 <RadzenDataGrid TItem="BiostarLogDTO" Data="biostarLogs" AllowPaging="true" PageSize="10"
                 Density="Density.Compact" AllowSorting="true" EmptyText="No Biostar logs found." class="rz-mt-2">
     <Columns>
@@ -118,4 +118,4 @@
     </RadzenText>
     <RadzenButton Text="Push Biostar logs" Icon="upload" Click="@PushBiostarLogsToItaacAsync"
                   Disabled="@(isLoading || !biostarLogs.Any(log => !log.ItaacUpdated))" />
-</RadzenStack>
+</RadzenStack> *@

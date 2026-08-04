@@ -17,7 +17,7 @@ public partial class Index
     private IReadOnlyList<AccessLogDTO> logs = [];
     private readonly HashSet<AccessLogDTO> selected = [];
     private IReadOnlyList<BiostarLogDTO> biostarLogs = [];
-    private readonly HashSet<BiostarLogDTO> selectedBiostar = [];
+    //private readonly HashSet<BiostarLogDTO> selectedBiostar = [];
     private bool isLoading;
 
     private async Task SearchAsync()
@@ -36,7 +36,7 @@ public partial class Index
 
         isLoading = true;
         selected.Clear();
-        selectedBiostar.Clear();
+        //selectedBiostar.Clear();
         try
         {
             var employeeResponse = await ApiClient.GetEmployeesAsync(search.CostCenter, search.Cpr);
@@ -62,32 +62,32 @@ public partial class Index
                 .ToList();
             await ApplyItaacStatusAsync(logs);
 
-            var biostarResponse = await ApiClient.GetBiostarByCprsAsync(cprs, search.FromDate, search.ToDate);
-            biostarLogs = (biostarResponse.lstData ?? [])
-                .OrderBy(log => log.Cpr)
-                .ThenBy(log => log.AttendanceDate)
-                .ThenBy(log => log.AttendanceTime)
-                .ToList();
-            await ApplyBiostarItaacStatusAsync(biostarLogs);
-            var severity = response.RESPONSE_CODE switch
-            {
-                "001" => NotificationSeverity.Success,
-                "003" => NotificationSeverity.Warning,
-                _ => NotificationSeverity.Error
-            };
-            Notify(severity,
-                severity == NotificationSeverity.Success ? "Face ID logs loaded" : "Unable to load Face ID logs",
-                response.RESPONSE_DESCRPTION ?? "The attendance service did not return a message.");
+            //var biostarResponse = await ApiClient.GetBiostarByCprsAsync(cprs, search.FromDate, search.ToDate);
+            //biostarLogs = (biostarResponse.lstData ?? [])
+            //    .OrderBy(log => log.Cpr)
+            //    .ThenBy(log => log.AttendanceDate)
+            //    .ThenBy(log => log.AttendanceTime)
+            //    .ToList();
+            //await ApplyBiostarItaacStatusAsync(biostarLogs);
+            //var severity = response.RESPONSE_CODE switch
+            //{
+            //    "001" => NotificationSeverity.Success,
+            //    "003" => NotificationSeverity.Warning,
+            //    _ => NotificationSeverity.Error
+            //};
+            //Notify(severity,
+            //    severity == NotificationSeverity.Success ? "Face ID logs loaded" : "Unable to load Face ID logs",
+            //    response.RESPONSE_DESCRPTION ?? "The attendance service did not return a message.");
 
-            var biostarSeverity = biostarResponse.RESPONSE_CODE switch
-            {
-                "001" => NotificationSeverity.Success,
-                "003" => NotificationSeverity.Warning,
-                _ => NotificationSeverity.Error
-            };
-            Notify(biostarSeverity,
-                biostarSeverity == NotificationSeverity.Success ? "Biostar logs loaded" : "Unable to load Biostar logs",
-                biostarResponse.RESPONSE_DESCRPTION ?? "The attendance service did not return a message.");
+            //var biostarSeverity = biostarResponse.RESPONSE_CODE switch
+            //{
+            //    "001" => NotificationSeverity.Success,
+            //    "003" => NotificationSeverity.Warning,
+            //    _ => NotificationSeverity.Error
+            //};
+            //Notify(biostarSeverity,
+            //    biostarSeverity == NotificationSeverity.Success ? "Biostar logs loaded" : "Unable to load Biostar logs",
+            //    biostarResponse.RESPONSE_DESCRPTION ?? "The attendance service did not return a message.");
         }
         finally
         {
@@ -141,48 +141,48 @@ public partial class Index
         }
     }
 
-    private void SetBiostarSelected(BiostarLogDTO log, bool value)
-    {
-        if (value && !log.ItaacUpdated)
-            selectedBiostar.Add(log);
-        else
-            selectedBiostar.Remove(log);
-    }
+    //private void SetBiostarSelected(BiostarLogDTO log, bool value)
+    //{
+    //    if (value && !log.ItaacUpdated)
+    //        selectedBiostar.Add(log);
+    //    else
+    //        selectedBiostar.Remove(log);
+    //}
 
-    private async Task PushBiostarLogsToItaacAsync()
-    {
-        IEnumerable<BiostarLogDTO> logsToPush = selectedBiostar.Count > 0 ? selectedBiostar : biostarLogs;
-        var pendingLogs = logsToPush.Where(log => !log.ItaacUpdated).ToList();
-        if (pendingLogs.Count == 0)
-        {
-            Notify(NotificationSeverity.Info, "Nothing to push", "All displayed Biostar logs are already updated in ITAAC.");
-            return;
-        }
+    //private async Task PushBiostarLogsToItaacAsync()
+    //{
+    //    IEnumerable<BiostarLogDTO> logsToPush = selectedBiostar.Count > 0 ? selectedBiostar : biostarLogs;
+    //    var pendingLogs = logsToPush.Where(log => !log.ItaacUpdated).ToList();
+    //    if (pendingLogs.Count == 0)
+    //    {
+    //        Notify(NotificationSeverity.Info, "Nothing to push", "All displayed Biostar logs are already updated in ITAAC.");
+    //        return;
+    //    }
 
-        var convertedLogs = pendingLogs.Select(ToAccessLog).ToList();
-        if (convertedLogs.Any(log => log == null))
-        {
-            Notify(NotificationSeverity.Error, "Unable to push logs",
-                "One or more Biostar logs have an invalid CPR, attendance date, or attendance time.");
-            return;
-        }
+    //    var convertedLogs = pendingLogs.Select(ToAccessLog).ToList();
+    //    if (convertedLogs.Any(log => log == null))
+    //    {
+    //        Notify(NotificationSeverity.Error, "Unable to push logs",
+    //            "One or more Biostar logs have an invalid CPR, attendance date, or attendance time.");
+    //        return;
+    //    }
 
-        isLoading = true;
-        try
-        {
-            var result = await ApiClient.PushToItaacAsync(convertedLogs.Cast<AccessLogDTO>());
-            Notify(NotificationSeverity.Success, "ITAAC update completed", result.Message);
-            await SearchAsync();
-        }
-        catch (Exception ex)
-        {
-            Notify(NotificationSeverity.Error, "ITAAC update failed", ex.Message);
-        }
-        finally
-        {
-            isLoading = false;
-        }
-    }
+    //    isLoading = true;
+    //    try
+    //    {
+    //        var result = await ApiClient.PushToItaacAsync(convertedLogs.Cast<AccessLogDTO>());
+    //        Notify(NotificationSeverity.Success, "ITAAC update completed", result.Message);
+    //        await SearchAsync();
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        Notify(NotificationSeverity.Error, "ITAAC update failed", ex.Message);
+    //    }
+    //    finally
+    //    {
+    //        isLoading = false;
+    //    }
+    //}
 
     private async Task ApplyItaacStatusAsync(IEnumerable<AccessLogDTO> attendanceLogs)
     {
@@ -209,35 +209,35 @@ public partial class Index
         }
     }
 
-    private async Task ApplyBiostarItaacStatusAsync(IEnumerable<BiostarLogDTO> attendanceLogs)
-    {
-        var pairs = attendanceLogs.Select(log => (Source: log, Converted: ToAccessLog(log)))
-            .Where(pair => pair.Converted != null).ToList();
-        await ApplyItaacStatusAsync(pairs.Select(pair => pair.Converted!));
-        foreach (var pair in pairs)
-            pair.Source.ItaacUpdated = pair.Converted!.ItaacUpdated;
-    }
+    //private async Task ApplyBiostarItaacStatusAsync(IEnumerable<BiostarLogDTO> attendanceLogs)
+    //{
+    //    var pairs = attendanceLogs.Select(log => (Source: log, Converted: ToAccessLog(log)))
+    //        .Where(pair => pair.Converted != null).ToList();
+    //    await ApplyItaacStatusAsync(pairs.Select(pair => pair.Converted!));
+    //    foreach (var pair in pairs)
+    //        pair.Source.ItaacUpdated = pair.Converted!.ItaacUpdated;
+    //}
 
-    private static AccessLogDTO? ToAccessLog(BiostarLogDTO log)
-    {
-        if (string.IsNullOrWhiteSpace(log.Cpr) || log.AttendanceDate == null
-            || !TimeOnly.TryParseExact(log.AttendanceTime, "HH:mm:ss",
-                System.Globalization.CultureInfo.InvariantCulture,
-                System.Globalization.DateTimeStyles.None, out var time))
-            return null;
+    //private static AccessLogDTO? ToAccessLog(BiostarLogDTO log)
+    //{
+    //    if (string.IsNullOrWhiteSpace(log.Cpr) || log.AttendanceDate == null
+    //        || !TimeOnly.TryParseExact(log.AttendanceTime, "HH:mm:ss",
+    //            System.Globalization.CultureInfo.InvariantCulture,
+    //            System.Globalization.DateTimeStyles.None, out var time))
+    //        return null;
 
-        var date = DateOnly.FromDateTime(log.AttendanceDate.Value);
-        return new AccessLogDTO
-        {
-            EmpId = log.Cpr,
-            AccessDate = date,
-            AccessTime = time,
-            AccessDateTime = date.ToDateTime(time),
-            DevSn = log.DeviceId,
-            DevName = log.DeviceName,
-            EmpFirstName = string.Empty
-        };
-    }
+    //    var date = DateOnly.FromDateTime(log.AttendanceDate.Value);
+    //    return new AccessLogDTO
+    //    {
+    //        EmpId = log.Cpr,
+    //        AccessDate = date,
+    //        AccessTime = time,
+    //        AccessDateTime = date.ToDateTime(time),
+    //        DevSn = log.DeviceId,
+    //        DevName = log.DeviceName,
+    //        EmpFirstName = string.Empty
+    //    };
+    //}
 
     private void Notify(NotificationSeverity severity, string summary, string detail) =>
         NotificationService.Notify(severity, summary, detail, 5000);
