@@ -160,6 +160,52 @@ namespace PHCAttendanceService.Services.AttendanceService
             return _AttendanceLogRespDTO;
         }
 
+        public async Task<BiostarLogRespDTO> GetBioLogsByCprs(BiostarLogRequestDTO request)
+        {
+            var cprs = request?.Cprs?
+                .Where(cpr => !string.IsNullOrWhiteSpace(cpr))
+                .Select(cpr => cpr.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList() ?? [];
+            if (cprs.Count == 0 || string.IsNullOrWhiteSpace(request?.FromDate)
+                || string.IsNullOrWhiteSpace(request.ToDate))
+            {
+                return BiostarError(ConfigClass.INVALID_REQUEST, ConfigClass.INVALID_REQUEST_MESSAGE);
+            }
+
+            try
+            {
+                var logs = await _repository.GetBioLogsByCprs(cprs, request.FromDate, request.ToDate);
+                if (logs.Count == 0)
+                {
+                    return BiostarError(ConfigClass.DATA_NOT_FOUND, ConfigClass.DATA_NOT_FOUND_MESSAGE);
+                }
+
+                return new BiostarLogRespDTO
+                {
+                    RESPONSE_CODE = ConfigClass.SUCCESS,
+                    RESPONSE_DESCRPTION = ConfigClass.SUCCESS_MESSAGE,
+                    Cprs = cprs,
+                    lstData = logs
+                };
+            }
+            catch (ArgumentException ex)
+            {
+                return BiostarError(ConfigClass.INVALID_REQUEST, ex.Message);
+            }
+            catch (Exception)
+            {
+                return BiostarError(ConfigClass.INTERNAL_ERROR,
+                    "An error occurred while retrieving Biostar attendance logs.");
+            }
+        }
+
+        private static BiostarLogRespDTO BiostarError(string code, string description) => new()
+        {
+            RESPONSE_CODE = code,
+            RESPONSE_DESCRPTION = description
+        };
+
 
         public async Task<HealthEmpAttendanceRespDTO> GetHealthEmpAttendaceByDate(string CprNumber,string Fromdate, string ToDate)
         {

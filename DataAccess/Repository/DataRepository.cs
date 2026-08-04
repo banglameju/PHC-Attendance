@@ -289,6 +289,39 @@ namespace DataAccess.Repository
             return getdata;
         }
 
+        public async Task<List<BiostarLogDTO>> GetBioLogsByCprs(
+            IReadOnlyCollection<string> Cprs, string FromDate, string ToDate)
+        {
+            if (Cprs.Count == 0)
+            {
+                return [];
+            }
+
+            var (startOfDay, endDateExclusive) = DateRangeParser.Parse(FromDate, ToDate);
+            const string sql = @"
+                SELECT CONVERT(varchar(50), l.nUserID) AS Cpr,
+                       CONVERT(date, DATEADD(second, l.nDateTime, '1970-01-01')) AS AttendanceDate,
+                       CONVERT(varchar, DATEADD(second, l.nDateTime, '1970-01-01'), 108) AS AttendanceTime,
+                       CONVERT(varchar(50), l.nReaderIdn) AS DeviceId,
+                       r.sName AS DeviceName
+                FROM TB_EVENT_LOG l
+                INNER JOIN TB_READER r ON l.nReaderIdn = r.nReaderIdn
+                WHERE CONVERT(varchar(50), l.nUserID) IN @Cprs
+                  AND r.NTYPE NOT IN (1,2,3,11,113)
+                  AND DATEADD(second, l.nDateTime, '1970-01-01') >= @StartOfDay
+                  AND DATEADD(second, l.nDateTime, '1970-01-01') < @EndDateExclusive
+                ORDER BY l.nUserID, DATEADD(second, l.nDateTime, '1970-01-01');";
+
+            using IDbConnection connection = new SqlConnection(ConfigClass.BiostarConnectionString);
+            var results = await connection.QueryAsync<BiostarLogDTO>(sql, new
+            {
+                Cprs = Cprs.ToArray(),
+                StartOfDay = startOfDay,
+                EndDateExclusive = endDateExclusive
+            });
+            return results.ToList();
+        }
+
         public async Task<List<HealthEmpAttendanceDTO>> GetEmpAtendanceByCpr(string Cpr,string FromDate, string ToDate)
         {
             string sql = "WITH AttTimeData AS (" +
