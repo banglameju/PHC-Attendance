@@ -67,6 +67,33 @@ public class AccessLogApiClient
         }
     }
 
+    public async Task<BiostarLogRespDTO> GetBiostarByCprsAsync(
+        IEnumerable<string> cprs, DateTime fromDate, DateTime toDate)
+    {
+        try
+        {
+            var request = new BiostarLogRequestDTO
+            {
+                Cprs = cprs.ToList(),
+                FromDate = fromDate.ToString("yyyy-MM-dd"),
+                ToDate = toDate.ToString("yyyy-MM-dd")
+            };
+            using var response = await _httpClient.PostAsJsonAsync("api/AccessLog/biostar", request);
+            if (!response.IsSuccessStatusCode)
+            {
+                return BiostarError($"Attendance service returned {response.StatusCode}.");
+            }
+
+            return await response.Content.ReadFromJsonAsync<BiostarLogRespDTO>()
+                ?? BiostarError("Attendance service returned an empty response.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unable to load Biostar attendance logs.");
+            return BiostarError("Unable to retrieve Biostar logs from the attendance service.");
+        }
+    }
+
     public async Task<ItaacTimeEventLogResponseDTO> GetItaacStatusAsync(IEnumerable<AccessLogDTO> logs)
     {
         try
@@ -143,6 +170,12 @@ public class AccessLogApiClient
     };
 
     private static ItaacTimeEventLogResponseDTO ItaacError(string message) => new()
+    {
+        RESPONSE_CODE = "011",
+        RESPONSE_DESCRPTION = message
+    };
+
+    private static BiostarLogRespDTO BiostarError(string message) => new()
     {
         RESPONSE_CODE = "011",
         RESPONSE_DESCRPTION = message
