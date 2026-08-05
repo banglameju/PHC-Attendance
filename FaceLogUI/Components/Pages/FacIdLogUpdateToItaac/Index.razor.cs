@@ -41,7 +41,7 @@ public partial class Index
         {
             var employeeResponse = await ApiClient.GetEmployeesAsync(search.CostCenter, search.Cpr);
             var cprs = employeeResponse.lstData?
-                .Select(employee => employee.CprNo)
+                .Select(employee => employee.EmpNo)
                 .Where(cpr => !string.IsNullOrWhiteSpace(cpr))
                 .Select(cpr => cpr!)
                 .Distinct(StringComparer.OrdinalIgnoreCase)

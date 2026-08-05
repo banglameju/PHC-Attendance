@@ -239,7 +239,7 @@ namespace DataAccess.Repository
                 SICK_LEAVE_BAL SickLeaveBal, EMP_PER_EMAIL EmpPerEmail
                 FROM AS_EMPLOYEE_MST
                 WHERE (:CostCenter IS NULL OR CC_CODE = :CostCenter)
-                  AND (:Cpr IS NULL OR CPRNO = :Cpr)
+                  AND (:Cpr IS NULL OR EMPNO = :Cpr)
                 ORDER BY CPRNO";
 
             await using var connection = new OracleConnection(ConfigClass.ConnectionStringITAAC);
