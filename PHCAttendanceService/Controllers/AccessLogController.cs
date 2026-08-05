@@ -22,6 +22,10 @@ public class AccessLogController : ControllerBase
     public Task<AccessLogRespDTO> GetByCprs([FromBody] AccessLogRequestDTO request) =>
         _service.GetByCprs(request);
 
+    [HttpPost("hikpro")]
+    public Task<HikProAccessLogRespDTO> GetHikProAccessLogs([FromBody] HikProAccessLogRequestDTO request) =>
+        _service.GetHikProAccessLogs(request);
+
     [HttpPost("biostar")]
     public Task<BiostarLogRespDTO> GetBiostarByCprs([FromBody] BiostarLogRequestDTO request) =>
         _healthAttendanceService.GetBioLogsByCprs(request);
