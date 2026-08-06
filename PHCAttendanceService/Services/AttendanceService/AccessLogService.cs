@@ -49,6 +49,48 @@ public class AccessLogService
         }
     }
 
+    public async Task<HikProAccessLogRespDTO> GetHikProAccessLogs(HikProAccessLogRequestDTO request)
+    {
+        if (request == null)
+        {
+            return HikProError(ConfigClass.INVALID_REQUEST, ConfigClass.INVALID_REQUEST_MESSAGE);
+        }
+
+        var cprs = request.Cprs?
+            .Where(cpr => !string.IsNullOrWhiteSpace(cpr))
+            .Select(cpr => cpr.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList() ?? [];
+
+        try
+        {
+            request.Cprs = cprs;
+            var logs = await _repository.GetHikProAccessLogs(request);
+            if (logs.Count == 0)
+            {
+                return HikProError(ConfigClass.DATA_NOT_FOUND, ConfigClass.DATA_NOT_FOUND_MESSAGE);
+            }
+
+            return new HikProAccessLogRespDTO
+            {
+                RESPONSE_CODE = ConfigClass.SUCCESS,
+                RESPONSE_DESCRPTION = ConfigClass.SUCCESS_MESSAGE,
+                Cprs = cprs.Count > 0 ? cprs : null,
+                IsProcessed = request.IsProcessed ?? 0,
+                lstData = logs
+            };
+        }
+        catch (ArgumentException ex)
+        {
+            return HikProError(ConfigClass.INVALID_REQUEST, ex.Message);
+        }
+        catch (Exception)
+        {
+            return HikProError(ConfigClass.INTERNAL_ERROR,
+                "An error occurred while retrieving HikPro access logs.");
+        }
+    }
+
     public async Task<ItaacTimeEventLogResponseDTO> GetItaacStatus(ItaacTimeEventLogRequestDTO request)
     {
         if (request?.Logs == null || request.Logs.Count == 0)
@@ -130,6 +172,15 @@ public class AccessLogService
         RESPONSE_CODE = code,
         RESPONSE_DESCRPTION = description,
         Cprs = null,
+        lstData = null
+    };
+
+    private static HikProAccessLogRespDTO HikProError(string code, string description) => new()
+    {
+        RESPONSE_CODE = code,
+        RESPONSE_DESCRPTION = description,
+        Cprs = null,
+        IsProcessed = null,
         lstData = null
     };
 }
