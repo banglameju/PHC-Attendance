@@ -250,7 +250,7 @@ namespace DataAccess.Repository
                     ""EMP_LAST_NAME"" AS EmpLastName,
                     ""RECORD_CREATED_DATE"" AS RecordCreatedDate,
                     ""IS_PROCESSED"" AS IsProcessed
-                FROM public.access_logs
+                FROM public.access_logs_to_integrate
                 WHERE ""IS_PROCESSED"" = @IsProcessed");
 
             var parameters = new DynamicParameters();
