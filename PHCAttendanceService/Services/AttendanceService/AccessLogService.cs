@@ -56,16 +56,11 @@ public class AccessLogService
             return HikProError(ConfigClass.INVALID_REQUEST, ConfigClass.INVALID_REQUEST_MESSAGE);
         }
 
-        var cprs = request.Cprs
+        var cprs = request.Cprs?
             .Where(cpr => !string.IsNullOrWhiteSpace(cpr))
             .Select(cpr => cpr.Trim())
             .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        if (cprs.Count == 0)
-        {
-            return HikProError(ConfigClass.INVALID_REQUEST, ConfigClass.INVALID_REQUEST_MESSAGE);
-        }
+            .ToList() ?? [];
 
         try
         {
@@ -80,10 +75,14 @@ public class AccessLogService
             {
                 RESPONSE_CODE = ConfigClass.SUCCESS,
                 RESPONSE_DESCRPTION = ConfigClass.SUCCESS_MESSAGE,
-                Cprs = cprs,
-                IsProcessed = request.IsProcessed,
+                Cprs = cprs.Count > 0 ? cprs : null,
+                IsProcessed = request.IsProcessed ?? 0,
                 lstData = logs
             };
+        }
+        catch (ArgumentException ex)
+        {
+            return HikProError(ConfigClass.INVALID_REQUEST, ex.Message);
         }
         catch (Exception)
         {

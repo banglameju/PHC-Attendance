@@ -12,6 +12,7 @@ using System.Collections.Generic;
 using System.ComponentModel.Design;
 using System.Data;
 using System.Data.SqlClient;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -223,20 +224,20 @@ namespace DataAccess.Repository
 
         public async Task<List<HikProAccessLogDTO>> GetHikProAccessLogs(HikProAccessLogRequestDTO request)
         {
-            var cprs = request.Cprs
+            var cprs = request.Cprs?
                 .Where(cpr => !string.IsNullOrWhiteSpace(cpr))
                 .Select(cpr => cpr.Trim())
                 .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToArray();
+                .ToArray() ?? [];
 
-            if (cprs.Length == 0)
+            var fromDate = ParseOptionalDate(request.FromDate, nameof(request.FromDate), "From date");
+            var toDate = ParseOptionalDate(request.ToDate, nameof(request.ToDate), "To date");
+            if (fromDate.HasValue && toDate.HasValue && toDate.Value < fromDate.Value)
             {
-                return [];
+                throw new ArgumentException("To date cannot be earlier than from date.", nameof(request.ToDate));
             }
 
-            var (startOfDay, endDateExclusive) = DateRangeParser.Parse(request.FromDate, request.ToDate);
-
-            const string sql = @"
+            var sql = new StringBuilder(@"
                 SELECT
                     ""LOG_ID"" AS LogId,
                     ""EMP_ID"" AS EmpId,
@@ -250,20 +251,37 @@ namespace DataAccess.Repository
                     ""RECORD_CREATED_DATE"" AS RecordCreatedDate,
                     ""IS_PROCESSED"" AS IsProcessed
                 FROM public.access_logs
-                WHERE ""EMP_ID"" = ANY(@Cprs)
-                  AND ""ACCESS_DATE_TIME"" >= @StartOfDay
-                  AND ""ACCESS_DATE_TIME"" < @EndDateExclusive
-                  AND (@IsProcessed IS NULL OR ""IS_PROCESSED"" = @IsProcessed)
-                ORDER BY ""ACCESS_DATE_TIME"" DESC, ""LOG_ID"" DESC;";
+                WHERE ""IS_PROCESSED"" = @IsProcessed");
+
+            var parameters = new DynamicParameters();
+            parameters.Add("IsProcessed", request.IsProcessed ?? 0, DbType.Int32);
+
+            if (cprs.Length > 0)
+            {
+                sql.AppendLine();
+                sql.Append("                  AND \"EMP_ID\" = ANY(@Cprs)");
+                parameters.Add("Cprs", cprs);
+            }
+
+            if (fromDate.HasValue)
+            {
+                sql.AppendLine();
+                sql.Append("                  AND \"ACCESS_DATE_TIME\" >= @StartOfDay");
+                parameters.Add("StartOfDay", fromDate.Value.ToDateTime(TimeOnly.MinValue), DbType.DateTime);
+            }
+
+            if (toDate.HasValue)
+            {
+                sql.AppendLine();
+                sql.Append("                  AND \"ACCESS_DATE_TIME\" < @EndDateExclusive");
+                parameters.Add("EndDateExclusive", toDate.Value.AddDays(1).ToDateTime(TimeOnly.MinValue), DbType.DateTime);
+            }
+
+            sql.AppendLine();
+            sql.Append("                ORDER BY \"ACCESS_DATE_TIME\" DESC, \"LOG_ID\" DESC;");
 
             using IDbConnection connection = new NpgsqlConnection(ConfigClass.HikConnectionString);
-            var results = await connection.QueryAsync<PostgresHikProAccessLogRow>(sql, new
-            {
-                Cprs = cprs,
-                StartOfDay = startOfDay,
-                EndDateExclusive = endDateExclusive,
-                request.IsProcessed
-            });
+            var results = await connection.QueryAsync<PostgresHikProAccessLogRow>(sql.ToString(), parameters);
 
             return results.Select(row => new HikProAccessLogDTO
             {
@@ -309,6 +327,28 @@ namespace DataAccess.Repository
             await using var connection = new OracleConnection(ConfigClass.ConnectionStringITAAC);
             var employees = await connection.QueryAsync<AsEmployeeMst>(sql, new { CostCenter, Cpr });
             return employees.ToList();
+        }
+
+        private static DateOnly? ParseOptionalDate(string? value, string parameterName, string displayName)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return null;
+            }
+
+            if (DateOnly.TryParseExact(
+                    value.Trim(),
+                    SupportedDateFormats,
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.None,
+                    out var date))
+            {
+                return date;
+            }
+
+            throw new ArgumentException(
+                $"{displayName} must use yyyy-MM-dd or dd-MM-yyyy format.",
+                parameterName);
         }
 
         private sealed class PostgresHikProAccessLogRow
