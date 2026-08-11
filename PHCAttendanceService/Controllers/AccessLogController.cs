@@ -26,6 +26,27 @@ public class AccessLogController : ControllerBase
     public Task<HikProAccessLogRespDTO> GetHikProAccessLogs([FromBody] HikProAccessLogRequestDTO request) =>
         _service.GetHikProAccessLogs(request);
 
+    [HttpPost("hikpro/process")]
+    public async Task<ActionResult<HikProAccessLogProcessResultDTO>> SaveAndProcessHikProAccessLogs(
+        [FromBody] List<HikProAccessLogDTO> accessLogs)
+    {
+        try
+        {
+            return Ok(await _service.SaveAndProcessHikProAccessLogs(accessLogs));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception)
+        {
+            return Problem(
+                title: "Unable to process HikPro access logs",
+                detail: "The logs could not be saved and processed; please try again or contact support.",
+                statusCode: StatusCodes.Status500InternalServerError);
+        }
+    }
+
     [HttpPost("biostar")]
     public Task<BiostarLogRespDTO> GetBiostarByCprs([FromBody] BiostarLogRequestDTO request) =>
         _healthAttendanceService.GetBioLogsByCprs(request);

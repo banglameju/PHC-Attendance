@@ -92,6 +92,28 @@ public class AccessLogService
         }
     }
 
+    public async Task<HikProAccessLogProcessResultDTO> SaveAndProcessHikProAccessLogs(
+        List<HikProAccessLogDTO> accessLogs)
+    {
+        ArgumentNullException.ThrowIfNull(accessLogs);
+        if (accessLogs.Count == 0)
+        {
+            throw new ArgumentException("At least one HikPro access log is required.", nameof(accessLogs));
+        }
+
+        if (accessLogs.Any(log => log == null || log.LogId <= 0))
+        {
+            throw new ArgumentException("Every HikPro access log must have a positive LogId.", nameof(accessLogs));
+        }
+
+        if (accessLogs.Select(log => log.LogId).Distinct().Count() != accessLogs.Count)
+        {
+            throw new ArgumentException("HikPro access log LogIds must be unique.", nameof(accessLogs));
+        }
+
+        return await _repository.SaveAndProcessHikProAccessLogs(accessLogs);
+    }
+
     public async Task<ItaacTimeEventLogResponseDTO> GetItaacStatus(ItaacTimeEventLogRequestDTO request)
     {
         if (request?.Logs == null || request.Logs.Count == 0)
