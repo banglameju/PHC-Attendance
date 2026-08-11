@@ -237,6 +237,12 @@ namespace DataAccess.Repository
                 throw new ArgumentException("To date cannot be earlier than from date.", nameof(request.ToDate));
             }
 
+            var recordCount = request.RecordCount ?? 500;
+            if (recordCount <= 0)
+            {
+                throw new ArgumentException("Record count must be greater than zero.", nameof(request.RecordCount));
+            }
+
             var sql = new StringBuilder(@"
                 SELECT
                     ""LOG_ID"" AS LogId,
@@ -278,7 +284,10 @@ namespace DataAccess.Repository
             }
 
             sql.AppendLine();
-            sql.Append("                ORDER BY \"ACCESS_DATE_TIME\" DESC, \"LOG_ID\" DESC;");
+            sql.Append("                ORDER BY \"ACCESS_DATE_TIME\" DESC, \"LOG_ID\" DESC");
+            sql.AppendLine();
+            sql.Append("                LIMIT @RecordCount;");
+            parameters.Add("RecordCount", recordCount, DbType.Int32);
 
             using IDbConnection connection = new NpgsqlConnection(ConfigClass.HikConnectionString);
             var results = await connection.QueryAsync<PostgresHikProAccessLogRow>(sql.ToString(), parameters);

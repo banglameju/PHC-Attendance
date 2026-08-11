@@ -65,6 +65,7 @@ public class AccessLogService
         try
         {
             request.Cprs = cprs;
+            request.RecordCount ??= 500;
             var logs = await _repository.GetHikProAccessLogs(request);
             if (logs.Count == 0)
             {
