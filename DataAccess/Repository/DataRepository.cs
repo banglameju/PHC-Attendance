@@ -257,7 +257,8 @@ namespace DataAccess.Repository
                     ""RECORD_CREATED_DATE"" AS RecordCreatedDate,
                     ""IS_PROCESSED"" AS IsProcessed
                 FROM public.access_logs_to_integrate
-                WHERE ""IS_PROCESSED"" = @IsProcessed");
+                WHERE ""IS_PROCESSED"" = @IsProcessed
+                ORDER BY ""LOG_ID"" ASC");
 
             var parameters = new DynamicParameters();
             parameters.Add("IsProcessed", request.IsProcessed ?? 0, DbType.Int32);
