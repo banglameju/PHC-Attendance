@@ -284,7 +284,7 @@ namespace DataAccess.Repository
             }
 
             sql.AppendLine();
-            sql.Append("                ORDER BY \"ACCESS_DATE_TIME\" DESC, \"LOG_ID\" DESC");
+            sql.Append("                ORDER BY \"LOG_ID\" ASC");
             sql.AppendLine();
             sql.Append("                LIMIT @RecordCount;");
             parameters.Add("RecordCount", recordCount, DbType.Int32);
@@ -321,8 +321,8 @@ namespace DataAccess.Repository
                 throw new ArgumentException("At least one HikPro access log is required.", nameof(accessLogs));
             }
 
-            // GetHikProAccessLogs returns newest records first. Insert in EVENT_LOG_ID order so the
-            // preserved first and last IDs form the range expected by the Oracle procedure.
+            // Keep the EVENT_LOG_ID order explicit so the preserved first and last IDs form the
+            // range expected by the Oracle procedure, regardless of the caller's list ordering.
             var logs = accessLogs.OrderBy(log => log.LogId).ToList();
             var fromEventLogId = logs[0].LogId;
             var toEventLogId = logs[^1].LogId;
