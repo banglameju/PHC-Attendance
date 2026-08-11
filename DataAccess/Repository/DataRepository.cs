@@ -284,7 +284,7 @@ namespace DataAccess.Repository
             }
 
             sql.AppendLine();
-            sql.Append("                ORDER BY \"ACCESS_DATE_TIME\" DESC, \"LOG_ID\" DESC");
+            sql.Append("                ORDER BY \"LOG_ID\" ASC");
             sql.AppendLine();
             sql.Append("                LIMIT @RecordCount;");
             parameters.Add("RecordCount", recordCount, DbType.Int32);
@@ -310,6 +310,91 @@ namespace DataAccess.Repository
                 RecordCreatedDate = row.RecordCreatedDate,
                 IsProcessed = row.IsProcessed
             }).ToList();
+        }
+
+        public async Task<HikProAccessLogProcessResultDTO> SaveAndProcessHikProAccessLogs(
+            IReadOnlyCollection<HikProAccessLogDTO> accessLogs)
+        {
+            ArgumentNullException.ThrowIfNull(accessLogs);
+            if (accessLogs.Count == 0)
+            {
+                throw new ArgumentException("At least one HikPro access log is required.", nameof(accessLogs));
+            }
+
+            // Keep the EVENT_LOG_ID order explicit so the preserved first and last IDs form the
+            // range expected by the Oracle procedure, regardless of the caller's list ordering.
+            var logs = accessLogs.OrderBy(log => log.LogId).ToList();
+            var fromEventLogId = logs[0].LogId;
+            var toEventLogId = logs[^1].LogId;
+
+            const string insertSql = @"INSERT INTO TB_EVENT_FACE_LOG
+                (EVENT_LOG_ID, EMP_ID, ACCESS_DATE_TIME, ACCESS_DATE, ACCESS_TIME,
+                 DEV_SN, DEV_NAME, EMP_FIRST_NAME, EMP_LAST_NAME, IS_PROCESSED)
+                VALUES
+                (:LogId, :EmpId, :AccessDateTime, :AccessDate, :AccessTime,
+                 :DevSn, :DevName, :EmpFirstName, :EmpLastName, 0)";
+
+            await using (var oracleConnection = new OracleConnection(ConfigClass.ConnectionStringITAAC))
+            {
+                await oracleConnection.OpenAsync();
+                await using var transaction = oracleConnection.BeginTransaction();
+                try
+                {
+                    var insertParameters = logs.Select(log => new
+                    {
+                        log.LogId,
+                        log.EmpId,
+                        AccessDateTime = log.AccessDateTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
+                        AccessDate = (log.AccessDate ?? DateOnly.FromDateTime(log.AccessDateTime))
+                            .ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                        AccessTime = (log.AccessTime ?? TimeOnly.FromDateTime(log.AccessDateTime))
+                            .ToString("HH:mm:ss", CultureInfo.InvariantCulture),
+                        log.DevSn,
+                        log.DevName,
+                        log.EmpFirstName,
+                        log.EmpLastName
+                    });
+
+                    await oracleConnection.ExecuteAsync(insertSql, insertParameters, transaction);
+
+                    var procedureParameters = new DynamicParameters();
+                    procedureParameters.Add("P_FROM_ID", fromEventLogId, DbType.Decimal, ParameterDirection.Input);
+                    procedureParameters.Add("P_TO_ID", toEventLogId, DbType.Decimal, ParameterDirection.Input);
+                    // Keep procedure work in this transaction; commit only after it succeeds.
+                    procedureParameters.Add("P_COMMIT", 0, DbType.Int32, ParameterDirection.Input);
+                    await oracleConnection.ExecuteAsync(
+                        "pr_process_face_event_log",
+                        procedureParameters,
+                        transaction,
+                        commandType: CommandType.StoredProcedure);
+
+                    await transaction.CommitAsync();
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            }
+
+            const string updateSql = @"UPDATE public.access_logs_to_integrate
+                SET ""IS_PROCESSED"" = 1
+                WHERE ""LOG_ID"" = ANY(@LogIds)
+                  AND ""IS_PROCESSED"" = 0;";
+            await using var postgresConnection = new NpgsqlConnection(ConfigClass.HikConnectionString);
+            var rowsMarkedProcessed = await postgresConnection.ExecuteAsync(updateSql, new
+            {
+                LogIds = logs.Select(log => log.LogId).ToArray()
+            });
+
+            return new HikProAccessLogProcessResultDTO
+            {
+                RowsInserted = logs.Count,
+                RowsMarkedProcessed = rowsMarkedProcessed,
+                FromEventLogId = fromEventLogId,
+                ToEventLogId = toEventLogId,
+                Message = $"Successfully inserted and processed {logs.Count} HikPro access log(s)."
+            };
         }
 
         public async Task<List<AsEmployeeMst>> GetEmployees(string? CostCenter, string? Cpr)
