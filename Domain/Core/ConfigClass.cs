@@ -11,8 +11,8 @@ namespace Domain.Core
     public static class ConfigClass
     {
         //PHC SQL RDS
-        public static string ConnectionString = "Server=Phc-test-aws-db-1.cqlz3th81aq4.eu-west-1.rds.amazonaws.com;Database=PHCServices;Trusted_Connection=True;Integrated Security=false;User Id=admin;Password=9jVF4ribk4LMOd6yV9V9;TrustServerCertificate=True";
-        //public static string ConnectionString = "Server=phcawsprodmssql1.c93fmaje3wb1.eu-west-1.rds.amazonaws.com;Database=PHCServices;Trusted_Connection=True;Integrated Security=false;User Id=admin;Password=VjdO9pnljHQvEfmHzoIo;TrustServerCertificate=True";
+        //public static string ConnectionString = "Server=Phc-test-aws-db-1.cqlz3th81aq4.eu-west-1.rds.amazonaws.com;Database=PHCServices;Trusted_Connection=True;Integrated Security=false;User Id=admin;Password=9jVF4ribk4LMOd6yV9V9;TrustServerCertificate=True";
+        public static string ConnectionString = "Server=phcawsprodmssql1.c93fmaje3wb1.eu-west-1.rds.amazonaws.com;Database=PHCServices;Trusted_Connection=True;Integrated Security=false;User Id=admin;Password=VjdO9pnljHQvEfmHzoIo;TrustServerCertificate=True";
 
         //Scaffold-DbContext "Host=phc-taacs-proddb.cqpw79y6zq7h.me-south-1.rds.amazonaws.com;Database=hikpro;Username=hikpro;Password=hikpro" Npgsql.EntityFrameworkCore.PostgreSQL -OutputDir HikProModels -ContextDir Data -Context HikProDbContext -Force
 
@@ -23,8 +23,8 @@ namespace Domain.Core
         public static string ConnectionStringVaccine = "Data Source=moh-sql-db.cor2awkipd5v.me-south-1.rds.amazonaws.com;Initial Catalog=BlazorApp;user id=CDAppUser;password=5004268;Encrypt=False";
 
 
-        public static string ConnectionStringAppointment = "Server=Phc-test-aws-db-1.cqlz3th81aq4.eu-west-1.rds.amazonaws.com;Database=PHCAppointments;Trusted_Connection=True;Integrated Security=false;User Id=admin;Password=9jVF4ribk4LMOd6yV9V9;TrustServerCertificate=True";
-        //public static string ConnectionStringAppointment = "Server=phcawsprodmssql1.c93fmaje3wb1.eu-west-1.rds.amazonaws.com;Database=PHCAppointments;Trusted_Connection=True;Integrated Security=false;User Id=admin;Password=VjdO9pnljHQvEfmHzoIo;TrustServerCertificate=True";
+        //public static string ConnectionStringAppointment = "Server=Phc-test-aws-db-1.cqlz3th81aq4.eu-west-1.rds.amazonaws.com;Database=PHCAppointments;Trusted_Connection=True;Integrated Security=false;User Id=admin;Password=9jVF4ribk4LMOd6yV9V9;TrustServerCertificate=True";
+        public static string ConnectionStringAppointment = "Server=phcawsprodmssql1.c93fmaje3wb1.eu-west-1.rds.amazonaws.com;Database=PHCAppointments;Trusted_Connection=True;Integrated Security=false;User Id=admin;Password=VjdO9pnljHQvEfmHzoIo;TrustServerCertificate=True";
 
 
 
